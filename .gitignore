@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite DB
+*.db
+
+# Environment
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs / dumps
+*.log
+*.bak
+*.swp
+*.tmp
+
+# Mac/Linux/Windows cruft
+.DS_Store
+Thumbs.db
+
+# Dist packaging
+build/
+dist/
+*.egg-info/
