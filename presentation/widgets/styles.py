@@ -29,7 +29,8 @@ def apply_style():
         foreground="white",
         font=("Segoe UI", 10, "bold"),
         padding=8,
-        relief="flat"
+        relief="flat",
+        borderwidth=0
     )
     style.map("TButton",
         background=[("active", primary_hover), ("disabled", light)],

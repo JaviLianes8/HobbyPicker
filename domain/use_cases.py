@@ -43,3 +43,6 @@ def delete_subitem(subitem_id):
 
 def delete_hobby(hobby_id):
     dao.delete_activity(hobby_id)
+
+def update_subitem(subitem_id, new_name):
+    dao.update_subitem(subitem_id, new_name)
