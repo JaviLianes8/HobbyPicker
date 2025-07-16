@@ -193,7 +193,7 @@ def start_app() -> None:
             sub = SimpleEntryDialog.ask(
                 parent=add_window,
                 title="Subelemento",
-                prompt="Introduce un elemento relacionado (libro, actividad, etc.):"
+                prompt="Introduce un elemento relacionado:"
             )
             while sub:
                 use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
