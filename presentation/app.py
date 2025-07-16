@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox
 from functools import partial
 from domain import use_cases
 from presentation.widgets.styles import apply_style
@@ -11,24 +11,20 @@ def start_app() -> None:
     root = tk.Tk()
     WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
-    root.geometry("800x600")
     root.minsize(800, 600)
-    apply_style()
+    apply_style(root)
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
 
     # --- Pestaña: ¿Qué hago hoy? ---
-    frame_suggest = ttk.Frame(notebook)
-    frame_suggest.configure(style="Custom.TFrame")
+    frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
     notebook.add(frame_suggest, text="¿Qué hago hoy?")
 
-    ttk.Style().configure("Big.TButton", font=("Segoe UI", 12), padding=10)
-    frame_suggest.configure(style="Custom.TFrame")
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 24, "bold"),
+        style="Heading.TLabel",
         wraplength=700,
         justify="center"
     )
@@ -70,7 +66,7 @@ def start_app() -> None:
             current_activity["name"] = None
             suggestion_label.config(text="Pulsa el botón para sugerencia")
 
-    button_container = tk.Frame(frame_suggest, bg="#f6f9fc")
+    button_container = ttk.Frame(frame_suggest)
     button_container.pack(pady=(20, 40))
 
     ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=20).pack(pady=10)
@@ -80,14 +76,14 @@ def start_app() -> None:
     frame_config = ttk.Frame(notebook)
     notebook.add(frame_config, text="⚙️ Configurar gustos")
 
-    main_config_layout = tk.Frame(frame_config, bg="#f6f9fc")
+    main_config_layout = ttk.Frame(frame_config)
     main_config_layout.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(main_config_layout, bg="#f6f9fc", highlightthickness=0)
+    canvas = tk.Canvas(main_config_layout, bg="#F4F6F9", highlightthickness=0)
     scrollbar = ttk.Scrollbar(main_config_layout, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    scrollable_frame = tk.Frame(canvas, bg="#f6f9fc")
+    scrollable_frame = ttk.Frame(canvas)
     def update_scrollregion(e=None):
         canvas.configure(scrollregion=canvas.bbox("all"))
         canvas.itemconfig("inner_frame", width=canvas.winfo_width())
@@ -100,7 +96,7 @@ def start_app() -> None:
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    sticky_bottom = tk.Frame(main_config_layout, bg="#f6f9fc")
+    sticky_bottom = ttk.Frame(main_config_layout)
     sticky_bottom.pack(fill="x", side="bottom", pady=5)
     ttk.Button(sticky_bottom, text="➕ Añadir hobby", command=lambda: open_add_hobby_window()).pack()
 
@@ -110,16 +106,16 @@ def start_app() -> None:
         for widget in hobbies_container.winfo_children():
             widget.destroy()
         for hobby in use_cases.get_all_hobbies():
-            row = tk.Frame(hobbies_container, bg="#ffffff", bd=1, relief="solid")
+            row = ttk.Frame(hobbies_container, style="Surface.TFrame")
             row.pack(fill="x", pady=4, padx=10)
 
             row.columnconfigure(0, weight=1)
             row.columnconfigure(1, weight=0)
 
-            label = ttk.Label(row, text=hobby[1], anchor="w", font=("Segoe UI", 11))
+            label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel")
             label.grid(row=0, column=0, sticky="w", padx=10, pady=8)
 
-            button_frame = tk.Frame(row, bg="#ffffff")
+            button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
 
             ttk.Button(button_frame, text="ⓘ",
@@ -141,20 +137,17 @@ def start_app() -> None:
         edit_window.minsize(400, 600)
 
         ttk.Label(edit_window, text="Subelementos:").pack(pady=5)
-        items_frame = tk.Frame(edit_window)
+        items_frame = ttk.Frame(edit_window)
         items_frame.pack(fill="both", expand=True, pady=5)
 
         def refresh_items():
             for w in items_frame.winfo_children():
                 w.destroy()
             for item in use_cases.get_subitems_for_hobby(hobby_id):
-                row = tk.Frame(items_frame)
+                row = ttk.Frame(items_frame, style="Surface.TFrame")
                 row.pack(fill="x", pady=2, padx=10)
 
-                style = ttk.Style()
-                style.configure("Subitem.TLabel", foreground="#333333", font=("Segoe UI", 11))
-
-                label = ttk.Label(row, text=item[2], anchor="w", style="Subitem.TLabel")
+                label = ttk.Label(row, text=item[2], anchor="w")
                 label.pack(side="left", expand=True)
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):

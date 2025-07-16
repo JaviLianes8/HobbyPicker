@@ -16,7 +16,7 @@ class SimpleEntryDialog:
         WindowUtils.center_window(dialog, 400, 200)
         apply_style(dialog)
 
-        ttk.Label(dialog, text=prompt).pack(pady=10)
+        ttk.Label(dialog, text=prompt, style="Heading.TLabel").pack(pady=10)
         entry = ttk.Entry(dialog, width=50)
         entry.insert(0, initial_value)
         entry.pack(pady=10)
@@ -31,8 +31,8 @@ class SimpleEntryDialog:
 
         button_frame = ttk.Frame(dialog)
         button_frame.pack(pady=10)
-        ttk.Button(button_frame, text="Aceptar", command=on_ok).pack(side="left", padx=10)
-        ttk.Button(button_frame, text="Cancelar", command=on_cancel).pack(side="left", padx=10)
+        ttk.Button(button_frame, text="Aceptar", command=on_ok, style="Big.TButton").pack(side="left", padx=10)
+        ttk.Button(button_frame, text="Cancelar", command=on_cancel, style="Big.TButton").pack(side="left", padx=10)
 
         dialog.wait_window()
         return result["value"]

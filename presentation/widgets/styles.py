@@ -1,45 +1,52 @@
 from tkinter import ttk
 
 def apply_style(master: ttk.Widget | None = None) -> None:
-    """Apply the application's visual theme."""
+    """Apply a modern, professional theme to all Tk widgets."""
     style = ttk.Style(master)
     style.theme_use("clam")
 
-    # 📘 Paleta base
-    primary = "#4A90E2"
-    primary_hover = "#3A78C2"
-    background = "#f6f9fc"
-    light = "#e0e0e0"
-    text = "#333333"
+    # 🎨 Palette
+    primary = "#0078D4"
+    primary_hover = "#0063B1"
+    background = "#F4F6F9"
+    surface = "#FFFFFF"
+    light = "#D1D9E0"
+    text = "#1F2A36"
+    subtle = "#6B7785"
 
-    base_font = ("Segoe UI", 10)
-    bold_font = ("Segoe UI", 10, "bold")
+    base_font = ("Helvetica", 11)
+    bold_font = ("Helvetica", 11, "bold")
+    large_font = ("Helvetica", 13, "bold")
 
-    # 📚 General
+    # 📚 Base widgets
     style.configure(".", background=background, foreground=text, font=(base_font))
     style.configure("TFrame", background=background)
-    style.configure("TLabel", background=background, font=("Segoe UI", 11))
+    style.configure("Surface.TFrame", background=surface, relief="ridge", borderwidth=1)
+    style.configure("TLabel", background=background, font=base_font, foreground=text)
+    style.configure("Heading.TLabel", font=large_font)
+    style.configure("TEntry", relief="flat", padding=6)
     style.configure("TEntry", relief="flat", padding=6)
     style.map("TEntry", foreground=[("focus", text)])
 
     # 🧩 Notebook (tabs)
     style.configure("TNotebook", background=background, padding=10)
-    style.configure("TNotebook.Tab", background=light, foreground=text, font=bold_font, padding=(12, 6))
+    style.configure("TNotebook.Tab", background=surface, foreground=subtle, font=bold_font, padding=(12, 6))
     style.map("TNotebook.Tab", background=[("selected", background)], foreground=[("selected", primary)])
 
-    # 🔘 Botones
+    # 🔘 Buttons
     style.configure("TButton",
         background=primary,
         foreground="white",
         font=bold_font,
         padding=8,
         relief="flat",
-        borderwidth=0
-    )
+        borderwidth=0)
+    
     style.map("TButton",
         background=[("active", primary_hover), ("disabled", light)],
-        relief=[("pressed", "sunken")]
-    )
+        relief=[("pressed", "sunken")])
+
+    style.configure("Big.TButton", font=large_font, padding=(12, 10))
 
     # 📃 Listbox (manual styling via widget config en app)
     # No se aplica por Style, se estiliza en el código si quieres (scrollbar, colors...)
