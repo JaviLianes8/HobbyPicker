@@ -6,7 +6,8 @@ from presentation.widgets.styles import apply_style
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 
-def start_app():
+def start_app() -> None:
+    """Launch the main HobbyPicker window."""
     root = tk.Tk()
     WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
@@ -33,9 +34,6 @@ def start_app():
     )
 
     suggestion_label.pack(pady=(60, 40), expand=True)
-
-    button_container = tk.Frame(frame_suggest, bg="#f6f9fc")
-    button_container.pack(pady=20)
 
     current_activity = {"id": None, "name": None}
 
@@ -139,7 +137,6 @@ def start_app():
         edit_window = tk.Toplevel()
         apply_style(edit_window)
         edit_window.title(f"Editar: {hobby_name}")
-        from presentation.utils.window_utils import WindowUtils
         WindowUtils.center_window(edit_window, 400, 600)
         edit_window.minsize(400, 600)
 
@@ -217,7 +214,6 @@ def start_app():
 
         add_window = tk.Toplevel(root)
         add_window.title("Añadir nuevo hobby")
-        from presentation.utils.window_utils import WindowUtils
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
         ttk.Label(add_window, text="Título del hobby:").pack(pady=5)

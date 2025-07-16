@@ -3,7 +3,14 @@ import random
 import os
 
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db"))
-print("🧭 Base de datos en uso:", DB_PATH)
+DB_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db")
+)
+
+# Ruta de la base de datos utilizada por la aplicación
+# Si la variable de entorno `HOBBYPICKER_DEBUG` está presente se imprime la ruta
+if os.environ.get("HOBBYPICKER_DEBUG"):
+    print("🧭 Base de datos en uso:", DB_PATH)
 class ActivityDAO:
     def __init__(self):
         self.conn = sqlite3.connect(DB_PATH)

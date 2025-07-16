@@ -1,6 +1,7 @@
 from tkinter import ttk
 
-def apply_style(master=None):
+def apply_style(master: ttk.Widget | None = None) -> None:
+    """Apply the application's visual theme."""
     style = ttk.Style(master)
     style.theme_use("clam")
 
@@ -11,8 +12,11 @@ def apply_style(master=None):
     light = "#e0e0e0"
     text = "#333333"
 
+    base_font = ("Segoe UI", 10)
+    bold_font = ("Segoe UI", 10, "bold")
+
     # 📚 General
-    style.configure(".", background=background, foreground=text, font=("Segoe UI", 10))
+    style.configure(".", background=background, foreground=text, font=(base_font))
     style.configure("TFrame", background=background)
     style.configure("TLabel", background=background, font=("Segoe UI", 11))
     style.configure("TEntry", relief="flat", padding=6)
@@ -20,14 +24,14 @@ def apply_style(master=None):
 
     # 🧩 Notebook (tabs)
     style.configure("TNotebook", background=background, padding=10)
-    style.configure("TNotebook.Tab", background=light, foreground=text, font=("Segoe UI", 10, "bold"), padding=(12, 6))
+    style.configure("TNotebook.Tab", background=light, foreground=text, font=bold_font, padding=(12, 6))
     style.map("TNotebook.Tab", background=[("selected", background)], foreground=[("selected", primary)])
 
     # 🔘 Botones
     style.configure("TButton",
         background=primary,
         foreground="white",
-        font=("Segoe UI", 10, "bold"),
+        font=bold_font,
         padding=8,
         relief="flat",
         borderwidth=0
