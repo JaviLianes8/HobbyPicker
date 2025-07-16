@@ -1,7 +1,7 @@
 from tkinter import ttk
 
-def apply_style():
-    style = ttk.Style()
+def apply_style(master=None):
+    style = ttk.Style(master)
     style.theme_use("clam")
 
     # 📘 Paleta base
