@@ -33,11 +33,11 @@ def start_app() -> None:
         justify="center",
     )
 
-    suggestion_label.pack(pady=(40, 40), expand=True)
+    suggestion_label.pack(pady=(40, 40))
 
-    wheel_size = int(min(screen_width, screen_height) * 0.7)
+    wheel_size = int(min(screen_width, screen_height) * 0.6)
     wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
-    wheel.pack(pady=40, expand=True)
+    wheel.pack(pady=20)
 
     def refresh_wheel():
         data = [
