@@ -10,9 +10,9 @@ from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
-    WindowUtils.center_window(root, 800, 600)
+    WindowUtils.center_window(root, 1020, 600)
     root.title("HobbyPicker")
-    root.minsize(800, 600)
+    root.minsize(1020, 600)
 
     apply_style(root, "system")
     canvas = None  # se asigna más tarde
@@ -53,7 +53,7 @@ def start_app() -> None:
     content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
     content_frame.grid(row=0, column=0, sticky="nsew")
 
-    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=220)
+    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=440)
     table_frame.grid(row=0, column=1, sticky="nsew", padx=10)
     table_frame.grid_propagate(False)
     table_frame.rowconfigure(0, weight=1)
@@ -67,8 +67,8 @@ def start_app() -> None:
     )
     prob_table.heading("activity", text="Actividad")
     prob_table.heading("percent", text="%")
-    prob_table.column("activity", width=160, anchor="w")
-    prob_table.column("percent", width=60, anchor="center")
+    prob_table.column("activity", width=320, anchor="w")
+    prob_table.column("percent", width=120, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
     h_scroll = ttk.Scrollbar(table_frame, orient="horizontal", command=prob_table.xview)
@@ -202,7 +202,9 @@ def start_app() -> None:
         for widget in hobbies_container.winfo_children():
             widget.destroy()
         for hobby in use_cases.get_all_hobbies():
-            row = ttk.Frame(hobbies_container, style="Surface.TFrame")
+            row = ttk.Frame(
+                hobbies_container, style="Outlined.Surface.TFrame", padding=5
+            )
             row.pack(fill="x", pady=4, padx=10)
 
             row.columnconfigure(0, weight=1)
@@ -251,7 +253,9 @@ def start_app() -> None:
             for w in items_frame.winfo_children():
                 w.destroy()
             for item in use_cases.get_subitems_for_hobby(hobby_id):
-                row = ttk.Frame(items_frame, style="Surface.TFrame")
+                row = ttk.Frame(
+                    items_frame, style="Outlined.Surface.TFrame", padding=5
+                )
                 row.pack(fill="x", pady=2, padx=10)
 
                 label = ttk.Label(row, text=item[2], anchor="w", style="Surface.TLabel")

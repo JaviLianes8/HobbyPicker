@@ -81,6 +81,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     light = palette["light"]
     text = palette["text"]
     subtle = palette["subtle"]
+    contrast = "#FFFFFF" if theme == "dark" else "#000000"
 
     base_font = ("Helvetica", 11)
     bold_font = ("Helvetica", 11, "bold")
@@ -95,6 +96,13 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         background=surface,
         relief=surface_relief,
         borderwidth=surface_border,
+    )
+    style.configure(
+        "Outlined.Surface.TFrame",
+        background=surface,
+        bordercolor=contrast,
+        borderwidth=1,
+        relief="solid",
     )
     style.configure("TLabel", background=background, font=base_font, foreground=text)
     style.configure(

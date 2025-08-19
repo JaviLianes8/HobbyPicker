@@ -52,19 +52,17 @@ def get_activity_probabilities():
     activities = dao.get_all_with_counts()
     if not activities:
         return []
-
     max_count = max(a[2] for a in activities) + 1
-    total_weight = sum(max_count - a[2] for a in activities)
-
-    result = []
+    weighted = []
     for hobby_id, name, count in activities:
         weight = max_count - count
         subitems = dao.get_subitems_by_activity(hobby_id)
         if subitems:
-            sub_prob = weight / total_weight / len(subitems)
             for sub in subitems:
-                result.append((f"{name} + {sub[2]}", sub_prob))
+                weighted.append((f"{name} + {sub[2]}", weight))
         else:
-            result.append((name, weight / total_weight))
-    return result
+            weighted.append((name, weight))
+
+    total_weight = sum(w for _, w in weighted)
+    return [(name, w / total_weight) for name, w in weighted]
 
