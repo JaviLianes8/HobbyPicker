@@ -51,10 +51,13 @@ def start_app() -> None:
     frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
     notebook.add(frame_suggest, text="¿Qué hago hoy?")
 
+    base_font_size = 160
+    font_ratio = base_font_size / min(screen_width, screen_height)
+    suggestion_font = font.Font(family="Segoe UI", size=base_font_size, weight="bold")
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 160, "bold"),
+        font=suggestion_font,
         wraplength=screen_width - 200,
         justify="center",
     )
@@ -92,13 +95,10 @@ def start_app() -> None:
             size -= 1
             fnt.configure(size=size)
 
-    _fit_label(suggestion_label)
-
     current_item = {"id": None, "name": None}
 
     def set_suggestion(text: str) -> None:
         suggestion_label.config(text=text)
-        _fit_label(suggestion_label)
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -128,11 +128,11 @@ def start_app() -> None:
         if event.widget is root:
             new_w, new_h = event.width, event.height
             suggestion_label.config(wraplength=new_w - 200)
+            suggestion_font.configure(size=int(min(new_w, new_h) * font_ratio))
             size = int(min(new_w, new_h) * 0.5)
             wheel.config(width=size, height=size)
             if wheel_data:
                 wheel.draw(wheel_data)
-            _fit_label(suggestion_label)
 
     root.bind("<Configure>", on_resize)
 
