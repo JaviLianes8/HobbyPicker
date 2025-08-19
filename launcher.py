@@ -3,10 +3,21 @@ import sys
 import os
 
 def check_and_launch():
-    # Verificar si el repositorio está actualizado
     repo_path = os.path.dirname(__file__)
     os.chdir(repo_path)
 
+    # comprobar en qué rama estamos
+    branch = subprocess.check_output(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+    ).strip()
+
+    if branch != "main":
+        print(f"⚠️ Estás en la rama {branch}, no se hace pull automático.")
+        from presentation.app import start_app
+        start_app()
+        return
+
+    # si estamos en main, sí hacemos fetch/pull
     subprocess.run(["git", "fetch", "origin"], stdout=subprocess.DEVNULL)
 
     local = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()

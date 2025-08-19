@@ -3,6 +3,17 @@ import sys
 import subprocess
 
 def install_requirements():
+    # Check if tkinter is available
+    try:
+        import tkinter
+    except ImportError:
+        print("❌ Tkinter is not installed. Please install it manually.")
+        print("👉 On Ubuntu/Debian: sudo apt install python3-tk")
+        print("👉 On Arch: sudo pacman -S tk")
+        print("👉 On Windows: reinstall Python from python.org with Tcl/Tk option enabled")
+        return
+
+    # Read requirements.txt ignoring "tk"
     req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
     if not os.path.exists(req_path):
         return
@@ -20,8 +31,9 @@ def install_requirements():
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", temp_path])
     os.remove(temp_path)
 
+# Run installer
 install_requirements()
 
-# 🔁 Ejecutar launcher tras instalar
+# Launch app
 from launcher import check_and_launch
 check_and_launch()
