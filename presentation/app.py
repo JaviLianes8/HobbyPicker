@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, font
 from functools import partial
 from domain import use_cases
 from presentation.widgets.styles import apply_style
@@ -73,6 +73,21 @@ def start_app() -> None:
         wheel.draw(data)
 
     root.after(100, refresh_wheel)
+
+    def _fit_label(event):
+        """Shrink label font so text fits within its width."""
+        widget = event.widget
+        widget.config(wraplength=widget.winfo_width())
+        if not hasattr(widget, "_dyn_font"):
+            widget._dyn_font = font.Font(font=widget.cget("font"))
+            widget.config(font=widget._dyn_font)
+        fnt = widget._dyn_font
+        words = widget.cget("text").split()
+        longest = max(words, key=len) if words else ""
+        size = fnt.cget("size")
+        while size > 8 and fnt.measure(longest) > widget.winfo_width():
+            size -= 1
+            fnt.configure(size=size)
 
     current_item = {"id": None, "name": None}
 
@@ -152,7 +167,7 @@ def start_app() -> None:
 
             label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel", justify="left")
             label.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
-            label.bind("<Configure>", lambda e: e.widget.config(wraplength=e.width))
+            label.bind("<Configure>", _fit_label)
 
             button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
@@ -188,7 +203,7 @@ def start_app() -> None:
 
                 label = ttk.Label(row, text=item[2], anchor="w", justify="left")
                 label.pack(side="left", fill="x", expand=True)
-                label.bind("<Configure>", lambda e: e.widget.config(wraplength=e.width))
+                label.bind("<Configure>", _fit_label)
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     
