@@ -12,7 +12,10 @@ def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
     root.title("HobbyPicker")
-    root.state("zoomed")  # maximized but keeps window controls
+    # Ajustar tamaño a la resolución actual de la pantalla
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.geometry(f"{screen_width}x{screen_height}")
     root.resizable(False, False)
 
     current_theme = tk.StringVar(value=load_theme())
@@ -40,9 +43,6 @@ def start_app() -> None:
     )
     menubar.add_cascade(label="Tema", menu=theme_menu)
     root.config(menu=menubar)
-
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
@@ -150,8 +150,9 @@ def start_app() -> None:
             row.columnconfigure(0, weight=1)
             row.columnconfigure(1, weight=0)
 
-            label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel")
-            label.grid(row=0, column=0, sticky="w", padx=10, pady=8)
+            label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel", justify="left")
+            label.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
+            label.bind("<Configure>", lambda e: e.widget.config(wraplength=e.width))
 
             button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
@@ -185,8 +186,9 @@ def start_app() -> None:
                 row = ttk.Frame(items_frame, style="Surface.TFrame")
                 row.pack(fill="x", pady=2, padx=10)
 
-                label = ttk.Label(row, text=item[2], anchor="w")
-                label.pack(side="left", expand=True)
+                label = ttk.Label(row, text=item[2], anchor="w", justify="left")
+                label.pack(side="left", fill="x", expand=True)
+                label.bind("<Configure>", lambda e: e.widget.config(wraplength=e.width))
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     
