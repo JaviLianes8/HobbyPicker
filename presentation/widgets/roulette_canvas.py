@@ -49,7 +49,6 @@ class RouletteCanvas(tk.Canvas):
             "#e76f51", "#6a4c93", "#8ac926", "#1982c4",
         ]
         base_font = font.Font(family="Helvetica", size=14, weight="bold")
-        max_text_width = self.radius * 1.2
         for idx, item in enumerate(items):
             extent = item['weight'] / total * 360
             color = colors[idx % len(colors)]
@@ -67,12 +66,16 @@ class RouletteCanvas(tk.Canvas):
             self._order.append(item['id'])
             name = item['name']
             text_font = font.Font(font=base_font)
+            effective_radius = self.radius * 0.7
+            max_text_width = max(
+                20, 2 * effective_radius * math.sin(math.radians(extent / 2)) * 0.9
+            )
             while text_font.cget("size") > 8 and text_font.measure(name) > max_text_width:
                 text_font.configure(size=text_font.cget("size") - 1)
             self._names[item['id']] = name
             mid = start + extent / 2
-            x = self.center[0] + self.radius * 0.7 * math.cos(math.radians(mid))
-            y = self.center[1] - self.radius * 0.7 * math.sin(math.radians(mid))
+            x = self.center[0] + effective_radius * math.cos(math.radians(mid))
+            y = self.center[1] - effective_radius * math.sin(math.radians(mid))
             self.create_text(
                 x,
                 y,
@@ -119,13 +122,12 @@ class RouletteCanvas(tk.Canvas):
         target_index = rev_order.index(activity_id)
         path += rev_order[: target_index + 1]
         total_steps = len(path)
-        max_duration = 5000  # ms
+        total_duration = 5000  # ms
         avg_delay = base_delay + extra_delay / 3
         expected = total_steps * avg_delay
-        if expected > max_duration:
-            scale = max_duration / expected
-            base_delay *= scale
-            extra_delay *= scale
+        scale = total_duration / expected
+        base_delay *= scale
+        extra_delay *= scale
 
         def step(i=0):
             current_id = path[i]
