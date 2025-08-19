@@ -1,44 +1,11 @@
-import sqlite3
 import random
-import os
+from data.database import Database
 
-DB_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db")
-)
-
-# Ruta de la base de datos utilizada por la aplicación
-# Si la variable de entorno `HOBBYPICKER_DEBUG` está presente se imprime la ruta
-if os.environ.get("HOBBYPICKER_DEBUG"):
-    print("🧭 Base de datos en uso:", DB_PATH)
 class ActivityDAO:
-    def __init__(self):
-        self.conn = sqlite3.connect(DB_PATH)
-        self._create_tables()
+    """Data access for activity-related operations."""
 
-    def _create_tables(self):
-        c = self.conn.cursor()
-        c.execute("""CREATE TABLE IF NOT EXISTS activities (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT UNIQUE,
-                        done INTEGER DEFAULT 0,
-                        accepted_count INTEGER DEFAULT 0
-                    )""")
-        c.execute(
-            """CREATE TABLE IF NOT EXISTS subitems (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        activity_id INTEGER,
-                        name TEXT,
-                        accepted_count INTEGER DEFAULT 0,
-                        FOREIGN KEY (activity_id) REFERENCES activities(id)
-                    )"""
-        )
-        try:
-            c.execute(
-                "ALTER TABLE subitems ADD COLUMN accepted_count INTEGER DEFAULT 0"
-            )
-        except sqlite3.OperationalError:
-            pass
-        self.conn.commit()
+    def __init__(self, db: Database | None = None):
+        self.conn = (db or Database()).conn
 
     def get_all_activities(self):
         return self.conn.execute("SELECT id, name FROM activities").fetchall()
@@ -71,7 +38,10 @@ class ActivityDAO:
         return random.choice([x for x in options if x[2] == options[0][2]]) if options else None
 
     def increment_accepted_count(self, activity_id):
-        self.conn.execute("UPDATE activities SET accepted_count = accepted_count + 1 WHERE id = ?", (activity_id,))
+        self.conn.execute(
+            "UPDATE activities SET accepted_count = accepted_count + 1 WHERE id = ?",
+            (activity_id,),
+        )
         self.conn.commit()
 
     def accept_activity(self, activity_id):
@@ -103,7 +73,7 @@ class ActivityDAO:
 
     def get_all_with_counts(self):
         return self.conn.execute("SELECT id, name, accepted_count FROM activities").fetchall()
-    
+
     def update_subitem(self, subitem_id, new_name):
         self.conn.execute(
             "UPDATE subitems SET name = ? WHERE id = ?",
