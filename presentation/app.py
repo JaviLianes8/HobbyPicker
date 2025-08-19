@@ -54,7 +54,7 @@ def start_app() -> None:
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 40, "bold"),
+        font=("Segoe UI", 160, "bold"),
         wraplength=screen_width - 200,
         justify="center",
     )
