@@ -5,6 +5,7 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+from presentation.widgets.roulette_canvas import RouletteCanvas
 
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
@@ -29,7 +30,19 @@ def start_app() -> None:
         justify="center"
     )
 
-    suggestion_label.pack(pady=(60, 40), expand=True)
+    suggestion_label.pack(pady=(20, 20), expand=True)
+
+    wheel = RouletteCanvas(frame_suggest, width=400, height=400)
+    wheel.pack(pady=20)
+
+    def refresh_wheel():
+        data = [
+            {"id": d[0], "name": d[1], "weight": d[2], "percentage": d[3]}
+            for d in use_cases.get_activity_weights()
+        ]
+        wheel.draw(data)
+
+    refresh_wheel()
 
     current_activity = {"id": None, "name": None}
 
@@ -58,6 +71,7 @@ def start_app() -> None:
                 suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
 
         animate()
+        wheel.highlight(final_id)
 
     def accept():
         if current_activity["id"]:
@@ -65,6 +79,8 @@ def start_app() -> None:
             current_activity["id"] = None
             current_activity["name"] = None
             suggestion_label.config(text="Pulsa el botón para sugerencia")
+            refresh_wheel()
+            wheel.highlight(None)
 
     button_container = ttk.Frame(frame_suggest)
     button_container.pack(pady=(20, 40))
@@ -103,6 +119,7 @@ def start_app() -> None:
     hobbies_container = scrollable_frame
 
     def refresh_listbox():
+        refresh_wheel()
         for widget in hobbies_container.winfo_children():
             widget.destroy()
         for hobby in use_cases.get_all_hobbies():

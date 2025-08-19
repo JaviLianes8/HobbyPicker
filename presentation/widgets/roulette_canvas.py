@@ -1,0 +1,64 @@
+import tkinter as tk
+import math
+
+
+class RouletteCanvas(tk.Canvas):
+    """Canvas that draws a roulette-style pie chart."""
+
+    def __init__(self, master, width=300, height=300, **kwargs):
+        super().__init__(master, width=width, height=height, **kwargs)
+        self.center = (width / 2, height / 2)
+        self.radius = min(width, height) / 2 - 10
+        self._arcs = {}
+
+    def draw(self, items):
+        """Draw roulette slices.
+
+        Args:
+            items: Iterable of dicts with keys 'id', 'name', 'weight', 'percentage'.
+        """
+        self.delete("all")
+        self._arcs.clear()
+        if not items:
+            return
+
+        total = sum(item['weight'] for item in items)
+        start = 0
+        colors = [
+            "#f94144", "#f3722c", "#f8961e", "#f9c74f",
+            "#90be6d", "#43aa8b", "#577590", "#277da1",
+        ]
+        for idx, item in enumerate(items):
+            extent = item['weight'] / total * 360
+            color = colors[idx % len(colors)]
+            arc = self.create_arc(
+                10,
+                10,
+                self.center[0] * 2 - 10,
+                self.center[1] * 2 - 10,
+                start=start,
+                extent=extent,
+                fill=color,
+                outline="white",
+            )
+            self._arcs[item['id']] = arc
+            mid = start + extent / 2
+            x = self.center[0] + self.radius * 0.6 * math.cos(math.radians(mid))
+            y = self.center[1] - self.radius * 0.6 * math.sin(math.radians(mid))
+            self.create_text(
+                x,
+                y,
+                text=f"{item['name']}\n{item['percentage']:.1f}%",
+                fill="white",
+                font=("Helvetica", 10),
+                justify="center",
+            )
+            start += extent
+
+    def highlight(self, activity_id):
+        """Emphasize a slice for the given activity id."""
+        for arc in self._arcs.values():
+            self.itemconfig(arc, width=2, outline="white")
+        arc_id = self._arcs.get(activity_id)
+        if arc_id:
+            self.itemconfig(arc_id, width=4, outline="yellow")

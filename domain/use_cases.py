@@ -46,3 +46,26 @@ def delete_hobby(hobby_id):
 
 def update_subitem(subitem_id, new_name):
     dao.update_subitem(subitem_id, new_name)
+
+
+def get_activity_weights():
+    """Return activities with their calculated weights and percentages."""
+    activities = dao.get_all_with_counts()
+    if not activities:
+        return []
+
+    max_count = max(a[2] for a in activities) + 1
+    weights = []
+    total_weight = 0
+    for hobby_id, name, count in activities:
+        weight = max_count - count
+        weights.append((hobby_id, name, weight))
+        total_weight += weight
+
+    if total_weight == 0:
+        return []
+
+    return [
+        (hobby_id, name, weight, (weight / total_weight) * 100)
+        for hobby_id, name, weight in weights
+    ]
