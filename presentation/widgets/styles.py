@@ -181,6 +181,10 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         bordercolor=light,
         borderwidth=tree_border,
         rowheight=24,
+        columnseparatorcolor=light,
+        rowseparatorcolor=light,
+        columnseparatorwidth=1,
+        rowseparatorwidth=1,
     )
     style.map(
         "Probability.Treeview",

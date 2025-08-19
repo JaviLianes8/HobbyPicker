@@ -30,9 +30,7 @@ def start_app() -> None:
     def change_theme_to(value: str) -> None:
         apply_style(root, theme_options[value])
         if canvas is not None:
-            canvas.configure(bg=get_color("background"))
-        if separator is not None:
-            separator.configure(bg=get_color("contrast"))
+            canvas.configure(bg=get_color("surface"))
 
     menubar = tk.Menu(root)
     theme_menu = tk.Menu(menubar, tearoff=0)
@@ -59,8 +57,8 @@ def start_app() -> None:
     content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
     content_frame.grid(row=0, column=0, sticky="nsew")
 
-    separator = tk.Frame(frame_suggest, width=2, bg=get_color("contrast"))
-    separator.grid(row=0, column=1, sticky="ns")
+    separator = ttk.Separator(frame_suggest, orient="vertical")
+    separator.grid(row=0, column=1, sticky="ns", padx=5)
 
     table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=660)
     table_frame.grid(row=0, column=2, sticky="nsew", padx=10)
@@ -103,7 +101,7 @@ def start_app() -> None:
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
 
-    current_activity = {"id": None, "name": None}
+    current_activity = {"id": None, "name": None, "is_subitem": False}
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -113,9 +111,10 @@ def start_app() -> None:
             )
             return
 
-        final_id, final_text = result
+        final_id, final_text, is_sub = result
         current_activity["id"] = final_id
         current_activity["name"] = final_text
+        current_activity["is_subitem"] = is_sub
 
         options = []
         for _ in range(30):
@@ -135,9 +134,12 @@ def start_app() -> None:
 
     def accept():
         if current_activity["id"]:
-            use_cases.mark_activity_as_done(current_activity["id"])
+            use_cases.mark_activity_as_done(
+                current_activity["id"], current_activity["is_subitem"]
+            )
             current_activity["id"] = None
             current_activity["name"] = None
+            current_activity["is_subitem"] = False
             suggestion_label.config(text="Pulsa el botón para sugerencia")
             refresh_probabilities()
 
