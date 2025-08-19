@@ -1,8 +1,8 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
 from functools import partial
 from domain import use_cases
-from presentation.widgets.styles import apply_style
+from presentation.widgets.styles import apply_style, get_color
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 
@@ -12,7 +12,31 @@ def start_app() -> None:
     WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
     root.minsize(800, 600)
-    apply_style(root)
+
+    apply_style(root, "system")
+
+    canvas = None  # initialized later
+
+    # Theme selection
+    top_bar = ttk.Frame(root)
+    top_bar.pack(fill="x")
+    theme_options = {"Sistema": "system", "Claro": "light", "Oscuro": "dark"}
+    theme_var = tk.StringVar(value="Sistema")
+
+    def change_theme(event=None):
+        apply_style(root, theme_options[theme_var.get()])
+        if canvas is not None:
+            canvas.configure(bg=get_color("background"))
+
+    theme_box = ttk.Combobox(
+        top_bar,
+        textvariable=theme_var,
+        values=list(theme_options.keys()),
+        state="readonly",
+        width=12,
+    )
+    theme_box.pack(side="right", padx=10, pady=5)
+    theme_box.bind("<<ComboboxSelected>>", change_theme)
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
@@ -79,7 +103,7 @@ def start_app() -> None:
     main_config_layout = ttk.Frame(frame_config)
     main_config_layout.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(main_config_layout, bg="#F4F6F9", highlightthickness=0)
+    canvas = tk.Canvas(main_config_layout, bg=get_color("background"), highlightthickness=0)
     scrollbar = ttk.Scrollbar(main_config_layout, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -206,6 +230,7 @@ def start_app() -> None:
             refresh_listbox()
 
         add_window = tk.Toplevel(root)
+        apply_style(add_window)
         add_window.title("Añadir nuevo hobby")
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
