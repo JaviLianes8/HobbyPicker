@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 import math
 
 
@@ -7,7 +8,9 @@ class RouletteCanvas(tk.Canvas):
 
     def __init__(self, master, width=300, height=300, **kwargs):
         # Match the surrounding surface color to avoid a gray square background
-        bg = kwargs.pop("bg", "#FFFFFF")
+        style = ttk.Style(master)
+        default_bg = style.lookup("Surface.TFrame", "background") or "#FFFFFF"
+        bg = kwargs.pop("bg", default_bg)
         super().__init__(
             master,
             width=width,
@@ -105,9 +108,10 @@ class RouletteCanvas(tk.Canvas):
         if activity_id not in self._arcs:
             return
 
-        path = self._order * cycles
-        target_index = self._order.index(activity_id)
-        path += self._order[: target_index + 1]
+        rev_order = list(reversed(self._order))
+        path = rev_order * cycles
+        target_index = rev_order.index(activity_id)
+        path += rev_order[: target_index + 1]
         total_steps = len(path)
 
         def step(i=0):

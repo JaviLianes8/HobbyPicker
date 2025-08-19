@@ -13,7 +13,26 @@ def start_app() -> None:
     root.title("HobbyPicker")
     root.state("zoomed")  # maximized but keeps window controls
     root.resizable(False, False)
-    apply_style(root)
+
+    current_theme = tk.StringVar(value="light")
+    apply_style(root, theme=current_theme.get())
+
+    menubar = tk.Menu(root)
+    theme_menu = tk.Menu(menubar, tearoff=0)
+
+    def set_theme(t: str) -> None:
+        current_theme.set(t)
+        apply_style(root, theme=t)
+        wheel.configure(bg=ttk.Style(root).lookup("Surface.TFrame", "background"))
+
+    theme_menu.add_radiobutton(
+        label="Claro", variable=current_theme, value="light", command=lambda: set_theme("light")
+    )
+    theme_menu.add_radiobutton(
+        label="Oscuro", variable=current_theme, value="dark", command=lambda: set_theme("dark")
+    )
+    menubar.add_cascade(label="Tema", menu=theme_menu)
+    root.config(menu=menubar)
 
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
