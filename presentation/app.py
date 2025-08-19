@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from functools import partial
 from domain import use_cases
 from presentation.widgets.styles import apply_style
+from presentation.utils.theme_prefs import load_theme, save_theme
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from presentation.widgets.roulette_canvas import RouletteCanvas
@@ -14,7 +15,7 @@ def start_app() -> None:
     root.state("zoomed")  # maximized but keeps window controls
     root.resizable(False, False)
 
-    current_theme = tk.StringVar(value="light")
+    current_theme = tk.StringVar(value=load_theme())
     apply_style(root, theme=current_theme.get())
 
     menubar = tk.Menu(root)
@@ -23,13 +24,19 @@ def start_app() -> None:
     def set_theme(t: str) -> None:
         current_theme.set(t)
         apply_style(root, theme=t)
-        wheel.configure(bg=ttk.Style(root).lookup("Surface.TFrame", "background"))
+        style = ttk.Style(root)
+        wheel.configure(bg=style.lookup("Surface.TFrame", "background"))
+        canvas.configure(bg=style.lookup("TFrame", "background"))
+        save_theme(t)
 
     theme_menu.add_radiobutton(
         label="Claro", variable=current_theme, value="light", command=lambda: set_theme("light")
     )
     theme_menu.add_radiobutton(
         label="Oscuro", variable=current_theme, value="dark", command=lambda: set_theme("dark")
+    )
+    theme_menu.add_radiobutton(
+        label="Sistema", variable=current_theme, value="system", command=lambda: set_theme("system")
     )
     menubar.add_cascade(label="Tema", menu=theme_menu)
     root.config(menu=menubar)
@@ -108,7 +115,8 @@ def start_app() -> None:
     main_config_layout = ttk.Frame(frame_config)
     main_config_layout.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(main_config_layout, bg="#F4F6F9", highlightthickness=0)
+    canvas_bg = ttk.Style(root).lookup("TFrame", "background")
+    canvas = tk.Canvas(main_config_layout, bg=canvas_bg, highlightthickness=0)
     scrollbar = ttk.Scrollbar(main_config_layout, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -161,7 +169,7 @@ def start_app() -> None:
 
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
-        apply_style(edit_window)
+        apply_style(edit_window, theme=current_theme.get())
         edit_window.title(f"Editar: {hobby_name}")
         WindowUtils.center_window(edit_window, 400, 600)
         edit_window.minsize(400, 600)
@@ -186,7 +194,8 @@ def start_app() -> None:
                         parent=edit_window,
                         title="Editar subelemento",
                         prompt=f"Nuevo nombre para '{current_name}':",
-                        initial_value=current_name
+                        initial_value=current_name,
+                        theme=current_theme.get(),
                     )
                     if new_name and new_name.strip() != current_name:
                         use_cases.update_subitem(subitem_id, new_name.strip())
@@ -204,7 +213,8 @@ def start_app() -> None:
             new_item = SimpleEntryDialog.ask(
                 parent=edit_window,
                 title="Nuevo subelemento",
-                prompt="Introduce nuevo:"
+                prompt="Introduce nuevo:",
+                theme=current_theme.get(),
             )
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
@@ -223,14 +233,16 @@ def start_app() -> None:
             sub = SimpleEntryDialog.ask(
                 parent=add_window,
                 title="Subelemento",
-                prompt="Introduce un elemento relacionado:"
+                prompt="Introduce un elemento relacionado:",
+                theme=current_theme.get(),
             )
             while sub:
                 use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
                 sub = SimpleEntryDialog.ask(
                     parent=add_window,
                     title="Otro más?",
-                    prompt="Introduce otro (o cancelar para terminar):"
+                    prompt="Introduce otro (o cancelar para terminar):",
+                    theme=current_theme.get(),
                 )
             add_window.destroy()
             refresh_listbox()
@@ -239,6 +251,7 @@ def start_app() -> None:
         add_window.title("Añadir nuevo hobby")
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
+        apply_style(add_window, theme=current_theme.get())
         ttk.Label(add_window, text="Título del hobby:").pack(pady=5)
         hobby_entry = ttk.Entry(add_window, width=40)
         hobby_entry.pack(pady=5)

@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font
 import math
 
 
@@ -48,6 +48,8 @@ class RouletteCanvas(tk.Canvas):
             "#264653", "#2a9d8f", "#e9c46a", "#f4a261",
             "#e76f51", "#6a4c93", "#8ac926", "#1982c4",
         ]
+        text_font = font.Font(family="Helvetica", size=14, weight="bold")
+        max_text_width = self.radius * 1.2
         for idx, item in enumerate(items):
             extent = item['weight'] / total * 360
             color = colors[idx % len(colors)]
@@ -63,18 +65,24 @@ class RouletteCanvas(tk.Canvas):
             )
             self._arcs[item['id']] = arc
             self._order.append(item['id'])
-            self._names[item['id']] = item['name']
+            name = item['name']
+            draw_name = name
+            if text_font.measure(draw_name) > max_text_width:
+                while text_font.measure(draw_name + "…") > max_text_width and draw_name:
+                    draw_name = draw_name[:-1]
+                draw_name = draw_name + "…"
+            self._names[item['id']] = name
             mid = start + extent / 2
             x = self.center[0] + self.radius * 0.7 * math.cos(math.radians(mid))
             y = self.center[1] - self.radius * 0.7 * math.sin(math.radians(mid))
             self.create_text(
                 x,
                 y,
-                text=f"{item['name']}\n{item['percentage']:.1f}%",
+                text=f"{draw_name}\n{item['percentage']:.1f}%",
                 fill="white",
-                font=("Helvetica", 14, "bold"),
+                font=text_font,
                 justify="center",
-                width=self.radius * 1.5,
+                width=max_text_width,
             )
             start += extent
 

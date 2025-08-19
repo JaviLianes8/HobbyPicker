@@ -7,8 +7,16 @@ def apply_style(master: ttk.Widget | None = None, theme: str = "light") -> None:
 
     Args:
         master: Optional widget used to scope the style.
-        theme: Either ``"light"`` or ``"dark"``.
+        theme: ``"light"``, ``"dark"`` or ``"system"`` to detect the OS preference.
     """
+    if theme == "system":
+        try:  # best-effort detection of the system theme
+            import darkdetect  # type: ignore
+
+            theme = "dark" if darkdetect.isDark() else "light"
+        except Exception:
+            theme = "light"
+
     style = ttk.Style(master)
     style.theme_use("clam")
 

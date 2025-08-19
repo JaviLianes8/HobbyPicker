@@ -5,7 +5,7 @@ from presentation.widgets.styles import apply_style
 
 class SimpleEntryDialog:
     @staticmethod
-    def ask(parent, title, prompt, initial_value=""):
+    def ask(parent, title, prompt, initial_value="", theme: str = "light"):
         result = {"value": None}
 
         dialog = tk.Toplevel(parent)
@@ -14,7 +14,7 @@ class SimpleEntryDialog:
         dialog.grab_set()
         dialog.resizable(False, False)
         WindowUtils.center_window(dialog, 400, 200)
-        apply_style(dialog)
+        apply_style(dialog, theme=theme)
 
         ttk.Label(dialog, text=prompt, style="Heading.TLabel").pack(pady=10)
         entry = ttk.Entry(dialog, width=50)
