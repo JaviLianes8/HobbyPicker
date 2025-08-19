@@ -65,16 +65,19 @@ def start_app() -> None:
     wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
     wheel.pack(pady=20)
 
-    def refresh_wheel():
-        data = [
+    wheel_data: list[dict] = []
+
+    def refresh_wheel() -> None:
+        nonlocal wheel_data
+        wheel_data = [
             {"id": d[0], "name": d[1], "weight": d[2], "percentage": d[3]}
             for d in use_cases.get_activity_weights()
         ]
-        wheel.draw(data)
+        wheel.draw(wheel_data)
 
     root.after(100, refresh_wheel)
 
-    def _fit_label(widget):
+    def _fit_label(widget: ttk.Label) -> None:
         """Shrink label font so text fits within its width."""
         widget.update_idletasks()
         widget.config(wraplength=widget.winfo_width())
@@ -89,10 +92,13 @@ def start_app() -> None:
             size -= 1
             fnt.configure(size=size)
 
+    _fit_label(suggestion_label)
+
     current_item = {"id": None, "name": None}
 
     def set_suggestion(text: str) -> None:
         suggestion_label.config(text=text)
+        _fit_label(suggestion_label)
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -117,6 +123,18 @@ def start_app() -> None:
             set_suggestion("Pulsa el botón para sugerencia")
             refresh_wheel()
             wheel.highlight(None)
+
+    def on_resize(event: tk.Event) -> None:
+        if event.widget is root:
+            new_w, new_h = event.width, event.height
+            suggestion_label.config(wraplength=new_w - 200)
+            size = int(min(new_w, new_h) * 0.5)
+            wheel.config(width=size, height=size)
+            if wheel_data:
+                wheel.draw(wheel_data)
+            _fit_label(suggestion_label)
+
+    root.bind("<Configure>", on_resize)
 
     button_container = ttk.Frame(frame_suggest)
     button_container.pack(pady=(40, 60))
