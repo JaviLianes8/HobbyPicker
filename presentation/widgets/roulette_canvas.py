@@ -6,9 +6,9 @@ class RouletteCanvas(tk.Canvas):
     """Canvas that draws a roulette-style pie chart."""
 
     def __init__(self, master, width=300, height=300, **kwargs):
-        super().__init__(master, width=width, height=height, **kwargs)
+        super().__init__(master, width=width, height=height, highlightthickness=0, **kwargs)
         self.center = (width / 2, height / 2)
-        self.radius = min(width, height) / 2 - 10
+        self.radius = min(width, height) / 2 - 20
         self._arcs = {}
         self._order = []
         self._names = {}
@@ -25,12 +25,14 @@ class RouletteCanvas(tk.Canvas):
         self._names.clear()
         if not items:
             return
+        self.center = (self.winfo_width() / 2, self.winfo_height() / 2)
+        self.radius = min(self.winfo_width(), self.winfo_height()) / 2 - 20
 
         total = sum(item['weight'] for item in items)
         start = 0
         colors = [
-            "#f94144", "#f3722c", "#f8961e", "#f9c74f",
-            "#90be6d", "#43aa8b", "#577590", "#277da1",
+            "#264653", "#2a9d8f", "#e9c46a", "#f4a261",
+            "#e76f51", "#6a4c93", "#8ac926", "#1982c4",
         ]
         for idx, item in enumerate(items):
             extent = item['weight'] / total * 360
@@ -49,15 +51,16 @@ class RouletteCanvas(tk.Canvas):
             self._order.append(item['id'])
             self._names[item['id']] = item['name']
             mid = start + extent / 2
-            x = self.center[0] + self.radius * 0.6 * math.cos(math.radians(mid))
-            y = self.center[1] - self.radius * 0.6 * math.sin(math.radians(mid))
+            x = self.center[0] + self.radius * 0.7 * math.cos(math.radians(mid))
+            y = self.center[1] - self.radius * 0.7 * math.sin(math.radians(mid))
             self.create_text(
                 x,
                 y,
                 text=f"{item['name']}\n{item['percentage']:.1f}%",
                 fill="white",
-                font=("Helvetica", 10),
+                font=("Helvetica", 14, "bold"),
                 justify="center",
+                width=self.radius * 1.5,
             )
             start += extent
 
@@ -67,7 +70,7 @@ class RouletteCanvas(tk.Canvas):
             self.itemconfig(arc, width=2, outline="white")
         arc_id = self._arcs.get(activity_id)
         if arc_id:
-            self.itemconfig(arc_id, width=4, outline="yellow")
+            self.itemconfig(arc_id, width=6, outline="yellow")
 
     def spin_to(
         self,

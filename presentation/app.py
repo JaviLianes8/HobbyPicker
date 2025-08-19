@@ -10,10 +10,13 @@ from presentation.widgets.roulette_canvas import RouletteCanvas
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
-    WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
-    root.minsize(800, 600)
+    root.attributes("-fullscreen", True)
+    root.resizable(False, False)
     apply_style(root)
+
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
@@ -25,15 +28,16 @@ def start_app() -> None:
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 28, "bold"),
-        wraplength=700,
-        justify="center"
+        font=("Segoe UI", 40, "bold"),
+        wraplength=screen_width - 200,
+        justify="center",
     )
 
-    suggestion_label.pack(pady=(20, 20), expand=True)
+    suggestion_label.pack(pady=(40, 40), expand=True)
 
-    wheel = RouletteCanvas(frame_suggest, width=400, height=400)
-    wheel.pack(pady=20)
+    wheel_size = int(min(screen_width, screen_height) * 0.6)
+    wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
+    wheel.pack(pady=40, expand=True)
 
     def refresh_wheel():
         data = [
@@ -73,10 +77,10 @@ def start_app() -> None:
             wheel.highlight(None)
 
     button_container = ttk.Frame(frame_suggest)
-    button_container.pack(pady=(20, 40))
+    button_container.pack(pady=(40, 60))
 
-    ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=20).pack(pady=10)
-    ttk.Button(button_container, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20).pack(pady=10)
+    ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=25).pack(pady=10)
+    ttk.Button(button_container, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=25).pack(pady=10)
 
     # --- Pestaña: Configurar gustos ---
     frame_config = ttk.Frame(notebook)

@@ -23,12 +23,14 @@ def get_weighted_random_valid_activity():
         return None
 
     max_count = max(c for _, _, c in options) + 1
-    weighted = []
+    entries = []
+    weights = []
     for identifier, display_name, count in options:
         weight = max_count - count
-        weighted.extend([(identifier, display_name)] * weight)
+        entries.append((identifier, display_name))
+        weights.append(weight)
 
-    return random.choice(weighted) if weighted else None
+    return random.choices(entries, weights=weights, k=1)[0] if entries else None
 
 
 def mark_item_as_done(identifier):
