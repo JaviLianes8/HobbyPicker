@@ -12,7 +12,7 @@ def check_and_launch():
     ).strip()
 
     if branch != "main":
-        print(f"⚠️ Estás en la rama {branch}, no se hace pull automático.")
+        print(f"Atención: estás en la rama {branch}, no se hace pull automático.")
         from presentation.app import start_app
         start_app()
         return
@@ -24,13 +24,13 @@ def check_and_launch():
     remote = subprocess.check_output(["git", "rev-parse", "origin/main"]).strip()
 
     if local != remote:
-        print("🔄 Actualizando desde main...")
+        print("Actualizando desde main...")
         subprocess.run(["git", "pull", "origin", "main"])
-        print("✅ Actualizado. Reiniciando...")
+        print("Actualizado. Reiniciando...")
         python = sys.executable
         script = os.path.join(repo_path, "main.pyw")
         os.execv(python, [python, script])
     else:
-        print("✅ Ya estás en la última versión.")
+        print("Ya estás en la última versión.")
         from presentation.app import start_app
         start_app()

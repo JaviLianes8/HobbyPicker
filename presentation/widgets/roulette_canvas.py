@@ -1,6 +1,8 @@
 import tkinter as tk
-from tkinter import ttk, font
+from tkinter import ttk
 import math
+
+from presentation.utils.font_utils import safe_font
 
 
 class RouletteCanvas(tk.Canvas):
@@ -48,7 +50,7 @@ class RouletteCanvas(tk.Canvas):
             "#264653", "#2a9d8f", "#e9c46a", "#f4a261",
             "#e76f51", "#6a4c93", "#8ac926", "#1982c4",
         ]
-        base_font = font.Font(family="Helvetica", size=14, weight="bold")
+        base_font = safe_font(size=14, weight="bold")
         for idx, item in enumerate(items):
             extent = item['weight'] / total * 360
             color = colors[idx % len(colors)]
@@ -65,7 +67,7 @@ class RouletteCanvas(tk.Canvas):
             self._arcs[item['id']] = arc
             self._order.append(item['id'])
             name = item['name']
-            text_font = font.Font(font=base_font)
+            text_font = base_font.copy()
             effective_radius = self.radius * 0.7
             max_text_width = max(
                 20, 2 * effective_radius * math.sin(math.radians(extent / 2)) * 0.9
@@ -137,7 +139,7 @@ class RouletteCanvas(tk.Canvas):
             if i + 1 < total_steps:
                 progress = i / total_steps
                 delay = base_delay + (progress ** 2) * extra_delay
-                self.after(int(delay), lambda: step(i + 1))
+                self.after(max(1, int(delay)), lambda: step(i + 1))
             elif on_complete:
                 on_complete()
 
