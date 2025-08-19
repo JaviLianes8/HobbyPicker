@@ -10,9 +10,9 @@ from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
-    WindowUtils.center_window(root, 1020, 600)
+    WindowUtils.center_window(root, 1240, 600)
     root.title("HobbyPicker")
-    root.minsize(1020, 600)
+    root.minsize(1240, 600)
 
     apply_style(root, "system")
     canvas = None  # se asigna más tarde
@@ -53,7 +53,7 @@ def start_app() -> None:
     content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
     content_frame.grid(row=0, column=0, sticky="nsew")
 
-    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=440)
+    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=660)
     table_frame.grid(row=0, column=1, sticky="nsew", padx=10)
     table_frame.grid_propagate(False)
     table_frame.rowconfigure(0, weight=1)
@@ -67,16 +67,14 @@ def start_app() -> None:
     )
     prob_table.heading("activity", text="Actividad")
     prob_table.heading("percent", text="%")
-    prob_table.column("activity", width=320, anchor="w")
-    prob_table.column("percent", width=120, anchor="center")
+    prob_table.column("activity", width=480, anchor="w")
+    prob_table.column("percent", width=180, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
-    h_scroll = ttk.Scrollbar(table_frame, orient="horizontal", command=prob_table.xview)
-    prob_table.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
+    prob_table.configure(yscrollcommand=v_scroll.set)
 
     prob_table.grid(row=0, column=0, sticky="nsew")
     v_scroll.grid(row=0, column=1, sticky="ns")
-    h_scroll.grid(row=1, column=0, sticky="ew")
 
     def refresh_probabilities():
         for row in prob_table.get_children():

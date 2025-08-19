@@ -58,8 +58,9 @@ def get_activity_probabilities():
         weight = max_count - count
         subitems = dao.get_subitems_by_activity(hobby_id)
         if subitems:
+            portion = weight / len(subitems)
             for sub in subitems:
-                weighted.append((f"{name} + {sub[2]}", weight))
+                weighted.append((f"{name} + {sub[2]}", portion))
         else:
             weighted.append((name, weight))
 
