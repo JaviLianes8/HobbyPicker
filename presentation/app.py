@@ -15,7 +15,9 @@ def start_app() -> None:
     # Ajustar tamaño a la resolución actual de la pantalla
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-    root.geometry(f"{screen_width}x{screen_height}")
+    root.geometry(f"{screen_width}x{screen_height}+0+0")
+    # Forzar pantalla completa inmovible
+    root.attributes("-fullscreen", True)
     root.resizable(False, False)
 
     current_theme = tk.StringVar(value=load_theme())
@@ -61,7 +63,7 @@ def start_app() -> None:
 
     suggestion_label.pack(pady=(40, 40))
 
-    wheel_size = int(min(screen_width, screen_height) * 0.6)
+    wheel_size = int(min(screen_width, screen_height) * 0.5)
     wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
     wheel.pack(pady=20)
 
@@ -89,13 +91,10 @@ def start_app() -> None:
             size -= 1
             fnt.configure(size=size)
 
-    suggestion_label.bind("<Configure>", lambda e: _fit_label(e.widget))
-
     current_item = {"id": None, "name": None}
 
     def set_suggestion(text: str) -> None:
         suggestion_label.config(text=text)
-        _fit_label(suggestion_label)
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
