@@ -28,8 +28,15 @@ class ActivityDAO:
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         activity_id INTEGER,
                         name TEXT,
+                        accepted_count INTEGER DEFAULT 0,
                         FOREIGN KEY (activity_id) REFERENCES activities(id)
                     )""")
+        try:
+            c.execute(
+                "ALTER TABLE subitems ADD COLUMN accepted_count INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass
         self.conn.commit()
 
     def get_all_activities(self):
@@ -37,7 +44,8 @@ class ActivityDAO:
 
     def get_subitems_by_activity(self, activity_id):
         return self.conn.execute(
-            "SELECT id, activity_id, name FROM subitems WHERE activity_id = ?", (activity_id,)
+            "SELECT id, activity_id, name, accepted_count FROM subitems WHERE activity_id = ?",
+            (activity_id,),
         ).fetchall()
 
     def get_random_with_subitems(self):
@@ -63,6 +71,13 @@ class ActivityDAO:
 
     def increment_accepted_count(self, activity_id):
         self.conn.execute("UPDATE activities SET accepted_count = accepted_count + 1 WHERE id = ?", (activity_id,))
+        self.conn.commit()
+
+    def increment_subitem_accepted_count(self, subitem_id):
+        self.conn.execute(
+            "UPDATE subitems SET accepted_count = accepted_count + 1 WHERE id = ?",
+            (subitem_id,),
+        )
         self.conn.commit()
 
     def accept_activity(self, activity_id):

@@ -8,23 +8,28 @@ def get_weighted_random_valid_activity():
     if not activities:
         return None
 
-    # Menor accepted_count => más peso
-    max_count = max(a[2] for a in activities) + 1
-    weighted = []
-    for act in activities:
-        hobby_id, name, count = act
+    items = []
+    for hobby_id, name, act_count in activities:
         subitems = dao.get_subitems_by_activity(hobby_id)
-        weight = max_count - count
         if subitems:
-            for sub in subitems:
-                weighted.extend([(hobby_id, f"{name} + {sub[2]}")] * weight)
+            for sub_id, _, sub_name, sub_count in subitems:
+                items.append((True, sub_id, f"{name} + {sub_name}", sub_count))
         else:
-            weighted.extend([(hobby_id, name)] * weight)
+            items.append((False, hobby_id, name, act_count))
+
+    max_count = max(i[3] for i in items) + 1
+    weighted = []
+    for is_sub, item_id, label, count in items:
+        weight = max_count - count
+        weighted.extend([(item_id, label, is_sub)] * weight)
 
     return random.choice(weighted) if weighted else None
 
-def mark_activity_as_done(activity_id):
-    dao.increment_accepted_count(activity_id)
+def mark_activity_as_done(item_id, is_subitem):
+    if is_subitem:
+        dao.increment_subitem_accepted_count(item_id)
+    else:
+        dao.increment_accepted_count(item_id)
 
 def create_hobby(name):
     return dao.insert_activity(name)
@@ -52,17 +57,21 @@ def get_activity_probabilities():
     activities = dao.get_all_with_counts()
     if not activities:
         return []
-    max_count = max(a[2] for a in activities) + 1
-    weighted = []
-    for hobby_id, name, count in activities:
-        weight = max_count - count
+
+    items = []
+    for hobby_id, name, act_count in activities:
         subitems = dao.get_subitems_by_activity(hobby_id)
         if subitems:
-            for sub in subitems:
-                weighted.append((f"{name} + {sub[2]}", weight))
+            for sub_id, _, sub_name, sub_count in subitems:
+                items.append((f"{name} + {sub_name}", sub_count))
         else:
-            weighted.append((name, weight))
+            items.append((name, act_count))
+
+    max_count = max(cnt for _, cnt in items) + 1
+    weighted = []
+    for label, count in items:
+        weighted.append((label, max_count - count))
 
     total_weight = sum(w for _, w in weighted)
-    return [(name, w / total_weight) for name, w in weighted]
+    return [(label, w / total_weight) for label, w in weighted]
 

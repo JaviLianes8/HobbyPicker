@@ -101,7 +101,7 @@ def start_app() -> None:
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
 
-    current_activity = {"id": None, "name": None}
+    current_activity = {"id": None, "name": None, "is_subitem": False}
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -111,9 +111,10 @@ def start_app() -> None:
             )
             return
 
-        final_id, final_text = result
+        final_id, final_text, is_sub = result
         current_activity["id"] = final_id
         current_activity["name"] = final_text
+        current_activity["is_subitem"] = is_sub
 
         options = []
         for _ in range(30):
@@ -133,9 +134,12 @@ def start_app() -> None:
 
     def accept():
         if current_activity["id"]:
-            use_cases.mark_activity_as_done(current_activity["id"])
+            use_cases.mark_activity_as_done(
+                current_activity["id"], current_activity["is_subitem"]
+            )
             current_activity["id"] = None
             current_activity["name"] = None
+            current_activity["is_subitem"] = False
             suggestion_label.config(text="Pulsa el botón para sugerencia")
             refresh_probabilities()
 
