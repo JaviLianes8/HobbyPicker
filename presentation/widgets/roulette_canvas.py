@@ -25,8 +25,10 @@ class RouletteCanvas(tk.Canvas):
         self._names.clear()
         if not items:
             return
-        self.center = (self.winfo_width() / 2, self.winfo_height() / 2)
-        self.radius = min(self.winfo_width(), self.winfo_height()) / 2 - 20
+        w = max(self.winfo_width(), int(self["width"]))
+        h = max(self.winfo_height(), int(self["height"]))
+        self.center = (w / 2, h / 2)
+        self.radius = min(w, h) / 2 - 20
 
         total = sum(item['weight'] for item in items)
         start = 0

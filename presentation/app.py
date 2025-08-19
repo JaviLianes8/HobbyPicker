@@ -11,7 +11,7 @@ def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
     root.title("HobbyPicker")
-    root.attributes("-fullscreen", True)
+    root.state("zoomed")  # maximized but keeps window controls
     root.resizable(False, False)
     apply_style(root)
 
@@ -35,7 +35,7 @@ def start_app() -> None:
 
     suggestion_label.pack(pady=(40, 40), expand=True)
 
-    wheel_size = int(min(screen_width, screen_height) * 0.6)
+    wheel_size = int(min(screen_width, screen_height) * 0.7)
     wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
     wheel.pack(pady=40, expand=True)
 
@@ -46,7 +46,7 @@ def start_app() -> None:
         ]
         wheel.draw(data)
 
-    refresh_wheel()
+    root.after(100, refresh_wheel)
 
     current_item = {"id": None, "name": None}
 
