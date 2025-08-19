@@ -1,18 +1,41 @@
+import tkinter as tk
 from tkinter import ttk
 
-def apply_style(master: ttk.Widget | None = None) -> None:
-    """Apply a modern, professional theme to all Tk widgets."""
+
+def apply_style(master: ttk.Widget | None = None, theme: str = "light") -> None:
+    """Apply a modern, professional theme to all Tk widgets.
+
+    Args:
+        master: Optional widget used to scope the style.
+        theme: ``"light"``, ``"dark"`` or ``"system"`` to detect the OS preference.
+    """
+    if theme == "system":
+        try:  # best-effort detection of the system theme
+            import darkdetect  # type: ignore
+
+            theme = "dark" if darkdetect.isDark() else "light"
+        except Exception:
+            theme = "light"
+
     style = ttk.Style(master)
     style.theme_use("clam")
 
-    # 🎨 Palette
-    primary = "#0078D4"
-    primary_hover = "#0063B1"
-    background = "#F4F6F9"
-    surface = "#FFFFFF"
-    light = "#D1D9E0"
-    text = "#1F2A36"
-    subtle = "#6B7785"
+    if theme == "dark":
+        primary = "#0A84FF"
+        primary_hover = "#0060DF"
+        background = "#121212"
+        surface = "#1E1E1E"
+        light = "#2C2C2C"
+        text = "#F5F5F5"
+        subtle = "#AAAAAA"
+    else:  # light theme
+        primary = "#0078D4"
+        primary_hover = "#0063B1"
+        background = "#E3F2FD"  # light blue background
+        surface = "#FFFFFF"
+        light = "#BBDEFB"
+        text = "#1F2A36"
+        subtle = "#6B7785"
 
     base_font = ("Helvetica", 11)
     bold_font = ("Helvetica", 11, "bold")
@@ -25,7 +48,6 @@ def apply_style(master: ttk.Widget | None = None) -> None:
     style.configure("TLabel", background=background, font=base_font, foreground=text)
     style.configure("Heading.TLabel", font=large_font)
     style.configure("TEntry", relief="flat", padding=6)
-    style.configure("TEntry", relief="flat", padding=6)
     style.map("TEntry", foreground=[("focus", text)])
 
     # 🧩 Notebook (tabs)
@@ -34,28 +56,31 @@ def apply_style(master: ttk.Widget | None = None) -> None:
     style.map("TNotebook.Tab", background=[("selected", background)], foreground=[("selected", primary)])
 
     # 🔘 Buttons
-    style.configure("TButton",
+    style.configure(
+        "TButton",
         background=primary,
         foreground="white",
         font=bold_font,
         padding=8,
         relief="flat",
-        borderwidth=0)
-    
-    style.map("TButton",
+        borderwidth=0,
+    )
+    style.map(
+        "TButton",
         background=[("active", primary_hover), ("disabled", light)],
-        relief=[("pressed", "sunken")])
-
+        relief=[("pressed", "sunken")],
+    )
     style.configure("Big.TButton", font=("Helvetica", 18, "bold"), padding=(20, 16))
 
     # 📃 Listbox (manual styling via widget config en app)
     # No se aplica por Style, se estiliza en el código si quieres (scrollbar, colors...)
 
     # 📋 Combobox (si lo usas en el futuro)
-    style.configure("TCombobox",
+    style.configure(
+        "TCombobox",
         fieldbackground="white",
         background=light,
-        padding=6
+        padding=6,
     )
 
     # ✅ Checkbutton y radiobutton
@@ -63,13 +88,25 @@ def apply_style(master: ttk.Widget | None = None) -> None:
     style.configure("TCheckbutton", background=background, padding=5)
 
     # 🧾 Scrollbar (si lo usas)
-    style.configure("Vertical.TScrollbar", gripcount=0,
-        background=light, darkcolor=light, lightcolor=light,
-        troughcolor=background, bordercolor=light, arrowcolor=primary
+    style.configure(
+        "Vertical.TScrollbar",
+        gripcount=0,
+        background=light,
+        darkcolor=light,
+        lightcolor=light,
+        troughcolor=background,
+        bordercolor=light,
+        arrowcolor=primary,
     )
 
     # 🪟 Toplevel (ventanas nuevas)
     style.configure("Toplevel", background=background)
+
+    if master is not None:
+        try:
+            master.configure(bg=background)
+        except tk.TclError:  # master may be a ttk widget lacking bg option
+            pass
 
     # 🖊 Tooltip idea futura
     # style.configure("ToolTip", background="#ffffe0", foreground="#000000", relief="solid", borderwidth=1)

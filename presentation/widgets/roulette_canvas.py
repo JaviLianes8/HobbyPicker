@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk, font
 import math
 
 
@@ -6,7 +7,18 @@ class RouletteCanvas(tk.Canvas):
     """Canvas that draws a roulette-style pie chart."""
 
     def __init__(self, master, width=300, height=300, **kwargs):
-        super().__init__(master, width=width, height=height, highlightthickness=0, **kwargs)
+        # Match the surrounding surface color to avoid a gray square background
+        style = ttk.Style(master)
+        default_bg = style.lookup("Surface.TFrame", "background") or "#FFFFFF"
+        bg = kwargs.pop("bg", default_bg)
+        super().__init__(
+            master,
+            width=width,
+            height=height,
+            highlightthickness=0,
+            bg=bg,
+            **kwargs,
+        )
         self.center = (width / 2, height / 2)
         self.radius = min(width, height) / 2 - 20
         self._arcs = {}
@@ -36,6 +48,8 @@ class RouletteCanvas(tk.Canvas):
             "#264653", "#2a9d8f", "#e9c46a", "#f4a261",
             "#e76f51", "#6a4c93", "#8ac926", "#1982c4",
         ]
+        text_font = font.Font(family="Helvetica", size=14, weight="bold")
+        max_text_width = self.radius * 1.2
         for idx, item in enumerate(items):
             extent = item['weight'] / total * 360
             color = colors[idx % len(colors)]
@@ -51,18 +65,24 @@ class RouletteCanvas(tk.Canvas):
             )
             self._arcs[item['id']] = arc
             self._order.append(item['id'])
-            self._names[item['id']] = item['name']
+            name = item['name']
+            draw_name = name
+            if text_font.measure(draw_name) > max_text_width:
+                while text_font.measure(draw_name + "…") > max_text_width and draw_name:
+                    draw_name = draw_name[:-1]
+                draw_name = draw_name + "…"
+            self._names[item['id']] = name
             mid = start + extent / 2
             x = self.center[0] + self.radius * 0.7 * math.cos(math.radians(mid))
             y = self.center[1] - self.radius * 0.7 * math.sin(math.radians(mid))
             self.create_text(
                 x,
                 y,
-                text=f"{item['name']}\n{item['percentage']:.1f}%",
+                text=f"{draw_name}\n{item['percentage']:.1f}%",
                 fill="white",
-                font=("Helvetica", 14, "bold"),
+                font=text_font,
                 justify="center",
-                width=self.radius * 1.5,
+                width=max_text_width,
             )
             start += extent
 
@@ -96,9 +116,10 @@ class RouletteCanvas(tk.Canvas):
         if activity_id not in self._arcs:
             return
 
-        path = self._order * cycles
-        target_index = self._order.index(activity_id)
-        path += self._order[: target_index + 1]
+        rev_order = list(reversed(self._order))
+        path = rev_order * cycles
+        target_index = rev_order.index(activity_id)
+        path += rev_order[: target_index + 1]
         total_steps = len(path)
 
         def step(i=0):
