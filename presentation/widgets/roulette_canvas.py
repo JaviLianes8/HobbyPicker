@@ -10,6 +10,7 @@ class RouletteCanvas(tk.Canvas):
         self.center = (width / 2, height / 2)
         self.radius = min(width, height) / 2 - 10
         self._arcs = {}
+        self._order = []
 
     def draw(self, items):
         """Draw roulette slices.
@@ -19,6 +20,7 @@ class RouletteCanvas(tk.Canvas):
         """
         self.delete("all")
         self._arcs.clear()
+        self._order.clear()
         if not items:
             return
 
@@ -42,6 +44,7 @@ class RouletteCanvas(tk.Canvas):
                 outline="white",
             )
             self._arcs[item['id']] = arc
+            self._order.append(item['id'])
             mid = start + extent / 2
             x = self.center[0] + self.radius * 0.6 * math.cos(math.radians(mid))
             y = self.center[1] - self.radius * 0.6 * math.sin(math.radians(mid))
@@ -62,3 +65,26 @@ class RouletteCanvas(tk.Canvas):
         arc_id = self._arcs.get(activity_id)
         if arc_id:
             self.itemconfig(arc_id, width=4, outline="yellow")
+
+    def spin_to(self, activity_id, cycles=3, base_delay=50):
+        """Animate a spin highlighting slices until reaching the target.
+
+        Args:
+            activity_id: Identifier of the slice to stop on.
+            cycles: How many full cycles to make before stopping.
+            base_delay: Initial delay between highlights in ms.
+        """
+        if activity_id not in self._arcs:
+            return
+
+        path = self._order * cycles
+        target_index = self._order.index(activity_id)
+        path += self._order[: target_index + 1]
+
+        def step(i=0):
+            self.highlight(path[i])
+            if i + 1 < len(path):
+                delay = base_delay + i * 5
+                self.after(delay, lambda: step(i + 1))
+
+        step()

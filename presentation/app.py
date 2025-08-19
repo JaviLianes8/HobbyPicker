@@ -71,7 +71,7 @@ def start_app() -> None:
                 suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
 
         animate()
-        wheel.highlight(final_id)
+        wheel.spin_to(final_id)
 
     def accept():
         if current_activity["id"]:
