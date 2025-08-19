@@ -122,13 +122,12 @@ class RouletteCanvas(tk.Canvas):
         target_index = rev_order.index(activity_id)
         path += rev_order[: target_index + 1]
         total_steps = len(path)
-        max_duration = 5000  # ms
+        total_duration = 5000  # ms
         avg_delay = base_delay + extra_delay / 3
         expected = total_steps * avg_delay
-        if expected > max_duration:
-            scale = max_duration / expected
-            base_delay *= scale
-            extra_delay *= scale
+        scale = total_duration / expected
+        base_delay *= scale
+        extra_delay *= scale
 
         def step(i=0):
             current_id = path[i]

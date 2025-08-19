@@ -4,7 +4,6 @@ from functools import partial
 from domain import use_cases
 from presentation.widgets.styles import apply_style
 from presentation.utils.theme_prefs import load_theme, save_theme
-from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from presentation.widgets.roulette_canvas import RouletteCanvas
 
@@ -16,9 +15,8 @@ def start_app() -> None:
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     root.geometry(f"{screen_width}x{screen_height}+0+0")
-    # Forzar pantalla completa inmovible
-    root.attributes("-fullscreen", True)
-    root.resizable(False, False)
+    # Abrir maximizado permitiendo cerrar y minimizar
+    root.state("zoomed")
 
     current_theme = tk.StringVar(value=load_theme())
     apply_style(root, theme=current_theme.get())
