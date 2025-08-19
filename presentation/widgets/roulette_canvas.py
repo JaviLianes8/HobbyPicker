@@ -124,12 +124,15 @@ class RouletteCanvas(tk.Canvas):
         target_index = rev_order.index(activity_id)
         path += rev_order[: target_index + 1]
         total_steps = len(path)
-        total_duration = 5000  # ms
-        avg_delay = base_delay + extra_delay / 3
-        expected = total_steps * avg_delay
-        scale = total_duration / expected
-        base_delay *= scale
-        extra_delay *= scale
+
+        # Precompute delays to guarantee the spin lasts exactly 5 seconds
+        intervals = []
+        for i in range(total_steps - 1):
+            progress = i / (total_steps - 1)
+            intervals.append(base_delay + (progress ** 2) * extra_delay)
+        scale = 5000 / sum(intervals)
+        intervals = [max(1, int(d * scale)) for d in intervals]
+        intervals[-1] += 5000 - sum(intervals)
 
         def step(i=0):
             current_id = path[i]
@@ -137,9 +140,7 @@ class RouletteCanvas(tk.Canvas):
             if on_step:
                 on_step(current_id, self._names.get(current_id, ""))
             if i + 1 < total_steps:
-                progress = i / total_steps
-                delay = base_delay + (progress ** 2) * extra_delay
-                self.after(max(1, int(delay)), lambda: step(i + 1))
+                self.after(intervals[i], lambda: step(i + 1))
             elif on_complete:
                 on_complete()
 
