@@ -74,9 +74,9 @@ def start_app() -> None:
 
     root.after(100, refresh_wheel)
 
-    def _fit_label(event):
+    def _fit_label(widget):
         """Shrink label font so text fits within its width."""
-        widget = event.widget
+        widget.update_idletasks()
         widget.config(wraplength=widget.winfo_width())
         if not hasattr(widget, "_dyn_font"):
             widget._dyn_font = font.Font(font=widget.cget("font"))
@@ -89,12 +89,18 @@ def start_app() -> None:
             size -= 1
             fnt.configure(size=size)
 
+    suggestion_label.bind("<Configure>", lambda e: _fit_label(e.widget))
+
     current_item = {"id": None, "name": None}
+
+    def set_suggestion(text: str) -> None:
+        suggestion_label.config(text=text)
+        _fit_label(suggestion_label)
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
-            suggestion_label.config(text="No hay hobbies configurados. Ve a la pestaña de configuración.")
+            set_suggestion("No hay hobbies configurados. Ve a la pestaña de configuración.")
             return
 
         final_id, final_text = result
@@ -103,9 +109,7 @@ def start_app() -> None:
 
         wheel.spin_to(
             final_id,
-            on_step=lambda _id, name: suggestion_label.config(
-                text=f"¿Qué tal hacer: {name}?"
-            ),
+            on_step=lambda _id, name: set_suggestion(f"¿Qué tal hacer: {name}?"),
         )
 
     def accept():
@@ -113,7 +117,7 @@ def start_app() -> None:
             use_cases.mark_item_as_done(current_item["id"])
             current_item["id"] = None
             current_item["name"] = None
-            suggestion_label.config(text="Pulsa el botón para sugerencia")
+            set_suggestion("Pulsa el botón para sugerencia")
             refresh_wheel()
             wheel.highlight(None)
 
@@ -167,7 +171,7 @@ def start_app() -> None:
 
             label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel", justify="left")
             label.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
-            label.bind("<Configure>", _fit_label)
+            label.bind("<Configure>", lambda e: _fit_label(e.widget))
 
             button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
@@ -203,7 +207,7 @@ def start_app() -> None:
 
                 label = ttk.Label(row, text=item[2], anchor="w", justify="left")
                 label.pack(side="left", fill="x", expand=True)
-                label.bind("<Configure>", _fit_label)
+                label.bind("<Configure>", lambda e: _fit_label(e.widget))
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     
