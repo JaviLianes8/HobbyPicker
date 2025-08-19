@@ -1,18 +1,49 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, font
 from functools import partial
 from domain import use_cases
 from presentation.widgets.styles import apply_style
-from presentation.utils.window_utils import WindowUtils
+from presentation.utils.theme_prefs import load_theme, save_theme
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+from presentation.widgets.roulette_canvas import RouletteCanvas
+from presentation.utils.font_utils import safe_font
 
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
-    WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
-    root.minsize(800, 600)
-    apply_style(root)
+    # Ajustar tamaño a la resolución actual de la pantalla
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.geometry(f"{screen_width}x{screen_height}+0+0")
+    # Abrir maximizado permitiendo cerrar y minimizar
+    root.state("zoomed")
+
+    current_theme = tk.StringVar(value=load_theme())
+    apply_style(root, theme=current_theme.get())
+
+    menubar = tk.Menu(root)
+    theme_menu = tk.Menu(menubar, tearoff=0)
+
+    def set_theme(t: str) -> None:
+        current_theme.set(t)
+        apply_style(root, theme=t)
+        style = ttk.Style(root)
+        wheel.configure(bg=style.lookup("Surface.TFrame", "background"))
+        canvas.configure(bg=style.lookup("TFrame", "background"))
+        save_theme(t)
+
+    theme_menu.add_radiobutton(
+        label="Claro", variable=current_theme, value="light", command=lambda: set_theme("light")
+    )
+    theme_menu.add_radiobutton(
+        label="Oscuro", variable=current_theme, value="dark", command=lambda: set_theme("dark")
+    )
+    theme_menu.add_radiobutton(
+        label="Sistema", variable=current_theme, value="system", command=lambda: set_theme("system")
+    )
+    menubar.add_cascade(label="Tema", menu=theme_menu)
+    root.config(menu=menubar)
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
@@ -24,62 +55,88 @@ def start_app() -> None:
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 28, "bold"),
-        wraplength=700,
-        justify="center"
+        font=safe_font(size=40, weight="bold"),
+        wraplength=screen_width - 200,
+        justify="center",
     )
 
-    suggestion_label.pack(pady=(60, 40), expand=True)
+    suggestion_label.pack(pady=(40, 40))
 
-    current_activity = {"id": None, "name": None}
+    wheel_size = int(min(screen_width, screen_height) * 0.5)
+    wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
+    wheel.pack(pady=20)
+
+    def refresh_wheel():
+        data = [
+            {"id": d[0], "name": d[1], "weight": d[2], "percentage": d[3]}
+            for d in use_cases.get_activity_weights()
+        ]
+        wheel.draw(data)
+
+    root.after(100, refresh_wheel)
+
+    def _fit_label(widget):
+        """Shrink label font so text fits within its width."""
+        widget.update_idletasks()
+        widget.config(wraplength=widget.winfo_width())
+        if not hasattr(widget, "_dyn_font"):
+            widget._dyn_font = font.Font(font=widget.cget("font"))
+            widget.config(font=widget._dyn_font)
+        fnt = widget._dyn_font
+        words = widget.cget("text").split()
+        longest = max(words, key=len) if words else ""
+        size = fnt.cget("size")
+        while size > 8 and fnt.measure(longest) > widget.winfo_width():
+            size -= 1
+            fnt.configure(size=size)
+
+    root.after(0, lambda: _fit_label(suggestion_label))
+
+    current_item = {"id": None, "name": None}
+
+    def set_suggestion(text: str) -> None:
+        suggestion_label.config(text=text)
+        _fit_label(suggestion_label)
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
-            suggestion_label.config(text="No hay hobbies configurados. Ve a la pestaña de configuración.")
+            set_suggestion("No hay hobbies configurados. Ve a la pestaña de configuración.")
             return
 
         final_id, final_text = result
-        current_activity["id"] = final_id
-        current_activity["name"] = final_text
+        current_item["id"] = final_id
+        current_item["name"] = final_text
 
-        options = []
-        for _ in range(30):
-            alt = use_cases.get_weighted_random_valid_activity()
-            if alt:
-                options.append(alt[1])
-        options.append(final_text)
-
-        def animate(i=0):
-            if i < len(options):
-                suggestion_label.config(text=f"¿Qué tal hacer: {options[i]}?")
-                root.after(100, lambda: animate(i + 1))
-            else:
-                suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
-
-        animate()
+        wheel.spin_to(
+            final_id,
+            on_step=lambda _id, name: set_suggestion(f"¿Qué tal hacer: {name}?"),
+        )
 
     def accept():
-        if current_activity["id"]:
-            use_cases.mark_activity_as_done(current_activity["id"])
-            current_activity["id"] = None
-            current_activity["name"] = None
-            suggestion_label.config(text="Pulsa el botón para sugerencia")
+        if current_item["id"]:
+            use_cases.mark_item_as_done(current_item["id"])
+            current_item["id"] = None
+            current_item["name"] = None
+            set_suggestion("Pulsa el botón para sugerencia")
+            refresh_wheel()
+            wheel.highlight(None)
 
     button_container = ttk.Frame(frame_suggest)
-    button_container.pack(pady=(20, 40))
+    button_container.pack(pady=(40, 60))
 
-    ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=20).pack(pady=10)
-    ttk.Button(button_container, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20).pack(pady=10)
+    ttk.Button(button_container, text="Sugerir hobby", command=suggest, style="Big.TButton", width=25).pack(pady=10)
+    ttk.Button(button_container, text="¡Me gusta!", command=accept, style="Big.TButton", width=25).pack(pady=10)
 
     # --- Pestaña: Configurar gustos ---
     frame_config = ttk.Frame(notebook)
-    notebook.add(frame_config, text="⚙️ Configurar gustos")
+    notebook.add(frame_config, text="Configurar gustos")
 
     main_config_layout = ttk.Frame(frame_config)
     main_config_layout.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(main_config_layout, bg="#F4F6F9", highlightthickness=0)
+    canvas_bg = ttk.Style(root).lookup("TFrame", "background")
+    canvas = tk.Canvas(main_config_layout, bg=canvas_bg, highlightthickness=0)
     scrollbar = ttk.Scrollbar(main_config_layout, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -98,11 +155,12 @@ def start_app() -> None:
 
     sticky_bottom = ttk.Frame(main_config_layout)
     sticky_bottom.pack(fill="x", side="bottom", pady=5)
-    ttk.Button(sticky_bottom, text="➕ Añadir hobby", command=lambda: open_add_hobby_window()).pack()
+    ttk.Button(sticky_bottom, text="Añadir hobby", command=lambda: open_add_hobby_window()).pack()
 
     hobbies_container = scrollable_frame
 
     def refresh_listbox():
+        refresh_wheel()
         for widget in hobbies_container.winfo_children():
             widget.destroy()
         for hobby in use_cases.get_all_hobbies():
@@ -112,15 +170,16 @@ def start_app() -> None:
             row.columnconfigure(0, weight=1)
             row.columnconfigure(1, weight=0)
 
-            label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel")
-            label.grid(row=0, column=0, sticky="w", padx=10, pady=8)
+            label = ttk.Label(row, text=hobby[1], anchor="w", style="Heading.TLabel", justify="left")
+            label.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
+            label.bind("<Configure>", lambda e: _fit_label(e.widget))
 
             button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
 
-            ttk.Button(button_frame, text="ⓘ",
+            ttk.Button(button_frame, text="Editar",
                     command=partial(open_edit_hobby_window, hobby[0], hobby[1])).pack(side="left", padx=2)
-            ttk.Button(button_frame, text="🗑",
+            ttk.Button(button_frame, text="Eliminar",
                     command=partial(confirm_delete_hobby, hobby[0], hobby[1])).pack(side="left", padx=2)
 
     def confirm_delete_hobby(hobby_id, hobby_name):
@@ -131,7 +190,7 @@ def start_app() -> None:
 
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
-        apply_style(edit_window)
+        apply_style(edit_window, theme=current_theme.get())
         edit_window.title(f"Editar: {hobby_name}")
         WindowUtils.center_window(edit_window, 400, 600)
         edit_window.minsize(400, 600)
@@ -147,8 +206,9 @@ def start_app() -> None:
                 row = ttk.Frame(items_frame, style="Surface.TFrame")
                 row.pack(fill="x", pady=2, padx=10)
 
-                label = ttk.Label(row, text=item[2], anchor="w")
-                label.pack(side="left", expand=True)
+                label = ttk.Label(row, text=item[2], anchor="w", justify="left")
+                label.pack(side="left", fill="x", expand=True)
+                label.bind("<Configure>", lambda e: _fit_label(e.widget))
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     
@@ -156,14 +216,15 @@ def start_app() -> None:
                         parent=edit_window,
                         title="Editar subelemento",
                         prompt=f"Nuevo nombre para '{current_name}':",
-                        initial_value=current_name
+                        initial_value=current_name,
+                        theme=current_theme.get(),
                     )
                     if new_name and new_name.strip() != current_name:
                         use_cases.update_subitem(subitem_id, new_name.strip())
                         refresh_items()
 
-                ttk.Button(row, text="🗑", width=3, command=lambda: delete_item(item[0], item[2])).pack(side="right", padx=2)
-                ttk.Button(row, text="ⓘ", width=3, command=edit_subitem).pack(side="right")
+                ttk.Button(row, text="Eliminar", width=8, command=lambda: delete_item(item[0], item[2])).pack(side="right", padx=2)
+                ttk.Button(row, text="Editar", width=8, command=edit_subitem).pack(side="right")
 
         def delete_item(item_id, name):
             if messagebox.askyesno("Eliminar", f"¿Eliminar subelemento '{name}'?"):
@@ -174,7 +235,8 @@ def start_app() -> None:
             new_item = SimpleEntryDialog.ask(
                 parent=edit_window,
                 title="Nuevo subelemento",
-                prompt="Introduce nuevo:"
+                prompt="Introduce nuevo:",
+                theme=current_theme.get(),
             )
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
@@ -193,14 +255,16 @@ def start_app() -> None:
             sub = SimpleEntryDialog.ask(
                 parent=add_window,
                 title="Subelemento",
-                prompt="Introduce un elemento relacionado:"
+                prompt="Introduce un elemento relacionado:",
+                theme=current_theme.get(),
             )
             while sub:
                 use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
                 sub = SimpleEntryDialog.ask(
                     parent=add_window,
                     title="Otro más?",
-                    prompt="Introduce otro (o cancelar para terminar):"
+                    prompt="Introduce otro (o cancelar para terminar):",
+                    theme=current_theme.get(),
                 )
             add_window.destroy()
             refresh_listbox()
@@ -209,6 +273,7 @@ def start_app() -> None:
         add_window.title("Añadir nuevo hobby")
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
+        apply_style(add_window, theme=current_theme.get())
         ttk.Label(add_window, text="Título del hobby:").pack(pady=5)
         hobby_entry = ttk.Entry(add_window, width=40)
         hobby_entry.pack(pady=5)

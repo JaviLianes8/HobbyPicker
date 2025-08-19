@@ -1,43 +1,19 @@
-import sqlite3
 import random
-import os
+from data.database import Database
 
-DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db"))
-DB_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db")
-)
-
-# Ruta de la base de datos utilizada por la aplicación
-# Si la variable de entorno `HOBBYPICKER_DEBUG` está presente se imprime la ruta
-if os.environ.get("HOBBYPICKER_DEBUG"):
-    print("🧭 Base de datos en uso:", DB_PATH)
 class ActivityDAO:
-    def __init__(self):
-        self.conn = sqlite3.connect(DB_PATH)
-        self._create_tables()
+    """Data access for activity-related operations."""
 
-    def _create_tables(self):
-        c = self.conn.cursor()
-        c.execute("""CREATE TABLE IF NOT EXISTS activities (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT UNIQUE,
-                        done INTEGER DEFAULT 0,
-                        accepted_count INTEGER DEFAULT 0
-                    )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS subitems (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        activity_id INTEGER,
-                        name TEXT,
-                        FOREIGN KEY (activity_id) REFERENCES activities(id)
-                    )""")
-        self.conn.commit()
+    def __init__(self, db: Database | None = None):
+        self.conn = (db or Database()).conn
 
     def get_all_activities(self):
         return self.conn.execute("SELECT id, name FROM activities").fetchall()
 
     def get_subitems_by_activity(self, activity_id):
         return self.conn.execute(
-            "SELECT id, activity_id, name FROM subitems WHERE activity_id = ?", (activity_id,)
+            "SELECT id, activity_id, name, accepted_count FROM subitems WHERE activity_id = ?",
+            (activity_id,),
         ).fetchall()
 
     def get_random_with_subitems(self):
@@ -62,7 +38,10 @@ class ActivityDAO:
         return random.choice([x for x in options if x[2] == options[0][2]]) if options else None
 
     def increment_accepted_count(self, activity_id):
-        self.conn.execute("UPDATE activities SET accepted_count = accepted_count + 1 WHERE id = ?", (activity_id,))
+        self.conn.execute(
+            "UPDATE activities SET accepted_count = accepted_count + 1 WHERE id = ?",
+            (activity_id,),
+        )
         self.conn.commit()
 
     def accept_activity(self, activity_id):
@@ -77,7 +56,10 @@ class ActivityDAO:
         return c.fetchone()[0]
 
     def insert_subitem(self, activity_id, name):
-        self.conn.execute("INSERT INTO subitems (activity_id, name) VALUES (?, ?)", (activity_id, name))
+        self.conn.execute(
+            "INSERT INTO subitems (activity_id, name) VALUES (?, ?)",
+            (activity_id, name),
+        )
         self.conn.commit()
 
     def delete_subitem(self, subitem_id):
@@ -91,7 +73,17 @@ class ActivityDAO:
 
     def get_all_with_counts(self):
         return self.conn.execute("SELECT id, name, accepted_count FROM activities").fetchall()
-    
+
     def update_subitem(self, subitem_id, new_name):
-        self.conn.execute("UPDATE subitems SET name = ? WHERE id = ?", (new_name, subitem_id))
+        self.conn.execute(
+            "UPDATE subitems SET name = ? WHERE id = ?",
+            (new_name, subitem_id),
+        )
+        self.conn.commit()
+
+    def increment_subitem_count(self, subitem_id):
+        self.conn.execute(
+            "UPDATE subitems SET accepted_count = accepted_count + 1 WHERE id = ?",
+            (subitem_id,),
+        )
         self.conn.commit()
