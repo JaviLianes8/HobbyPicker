@@ -8,9 +8,9 @@ def apply_style(master: ttk.Widget | None = None) -> None:
     # 🎨 Palette
     primary = "#0078D4"
     primary_hover = "#0063B1"
-    background = "#F4F6F9"
+    background = "#E3F2FD"  # light blue background
     surface = "#FFFFFF"
-    light = "#D1D9E0"
+    light = "#BBDEFB"
     text = "#1F2A36"
     subtle = "#6B7785"
 

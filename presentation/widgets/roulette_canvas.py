@@ -6,7 +6,16 @@ class RouletteCanvas(tk.Canvas):
     """Canvas that draws a roulette-style pie chart."""
 
     def __init__(self, master, width=300, height=300, **kwargs):
-        super().__init__(master, width=width, height=height, highlightthickness=0, **kwargs)
+        # Match the surrounding surface color to avoid a gray square background
+        bg = kwargs.pop("bg", "#FFFFFF")
+        super().__init__(
+            master,
+            width=width,
+            height=height,
+            highlightthickness=0,
+            bg=bg,
+            **kwargs,
+        )
         self.center = (width / 2, height / 2)
         self.radius = min(width, height) / 2 - 20
         self._arcs = {}
