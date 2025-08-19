@@ -56,22 +56,12 @@ def start_app() -> None:
         current_item["id"] = final_id
         current_item["name"] = final_text
 
-        options = []
-        for _ in range(30):
-            alt = use_cases.get_weighted_random_valid_activity()
-            if alt:
-                options.append(alt[1])
-        options.append(final_text)
-
-        def animate(i=0):
-            if i < len(options):
-                suggestion_label.config(text=f"¿Qué tal hacer: {options[i]}?")
-                root.after(100, lambda: animate(i + 1))
-            else:
-                suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
-
-        animate()
-        wheel.spin_to(final_id)
+        wheel.spin_to(
+            final_id,
+            on_step=lambda _id, name: suggestion_label.config(
+                text=f"¿Qué tal hacer: {name}?"
+            ),
+        )
 
     def accept():
         if current_item["id"]:

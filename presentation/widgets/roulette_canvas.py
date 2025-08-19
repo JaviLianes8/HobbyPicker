@@ -11,6 +11,7 @@ class RouletteCanvas(tk.Canvas):
         self.radius = min(width, height) / 2 - 10
         self._arcs = {}
         self._order = []
+        self._names = {}
 
     def draw(self, items):
         """Draw roulette slices.
@@ -21,6 +22,7 @@ class RouletteCanvas(tk.Canvas):
         self.delete("all")
         self._arcs.clear()
         self._order.clear()
+        self._names.clear()
         if not items:
             return
 
@@ -45,6 +47,7 @@ class RouletteCanvas(tk.Canvas):
             )
             self._arcs[item['id']] = arc
             self._order.append(item['id'])
+            self._names[item['id']] = item['name']
             mid = start + extent / 2
             x = self.center[0] + self.radius * 0.6 * math.cos(math.radians(mid))
             y = self.center[1] - self.radius * 0.6 * math.sin(math.radians(mid))
@@ -66,7 +69,15 @@ class RouletteCanvas(tk.Canvas):
         if arc_id:
             self.itemconfig(arc_id, width=4, outline="yellow")
 
-    def spin_to(self, activity_id, cycles=3, base_delay=20, extra_delay=300):
+    def spin_to(
+        self,
+        activity_id,
+        cycles=3,
+        base_delay=20,
+        extra_delay=300,
+        on_step=None,
+        on_complete=None,
+    ):
         """Animate a spin highlighting slices with easing until reaching the target.
 
         Args:
@@ -74,6 +85,8 @@ class RouletteCanvas(tk.Canvas):
             cycles: How many full cycles to make before stopping.
             base_delay: Minimum delay between highlights in ms.
             extra_delay: Extra delay added near the end to simulate deceleration.
+            on_step: Optional callback receiving ``(id, name)`` per highlight.
+            on_complete: Callback executed once the animation finishes.
         """
         if activity_id not in self._arcs:
             return
@@ -84,10 +97,15 @@ class RouletteCanvas(tk.Canvas):
         total_steps = len(path)
 
         def step(i=0):
-            self.highlight(path[i])
+            current_id = path[i]
+            self.highlight(current_id)
+            if on_step:
+                on_step(current_id, self._names.get(current_id, ""))
             if i + 1 < total_steps:
                 progress = i / total_steps
                 delay = base_delay + (progress ** 2) * extra_delay
                 self.after(int(delay), lambda: step(i + 1))
+            elif on_complete:
+                on_complete()
 
         step()
