@@ -57,6 +57,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
             "light": "#3A3A3A",
             "text": "#FFFFFF",
             "subtle": "#CCCCCC",
+            "contrast": "#FFFFFF",
         }
     else:  # light theme
         palette = {
@@ -67,6 +68,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
             "light": "#D1D9E0",
             "text": "#1F2A36",
             "subtle": "#6B7785",
+            "contrast": "#000000",
         }
 
     _CURRENT_PALETTE = palette
@@ -81,6 +83,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     light = palette["light"]
     text = palette["text"]
     subtle = palette["subtle"]
+    contrast = palette["contrast"]
 
     base_font = ("Helvetica", 11)
     bold_font = ("Helvetica", 11, "bold")
@@ -88,11 +91,34 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 
     style.configure(".", background=background, foreground=text, font=base_font)
     style.configure("TFrame", background=background)
-    style.configure("Surface.TFrame", background=surface, relief="ridge", borderwidth=1)
+    surface_border = 0 if theme == "dark" else 1
+    surface_relief = "flat" if theme == "dark" else "ridge"
+    style.configure(
+        "Surface.TFrame",
+        background=surface,
+        relief=surface_relief,
+        borderwidth=surface_border,
+    )
+    style.configure(
+        "Outlined.Surface.TFrame",
+        background=surface,
+        bordercolor=contrast,
+        borderwidth=1,
+        relief="solid",
+    )
     style.configure("TLabel", background=background, font=base_font, foreground=text)
+    style.configure(
+        "Surface.TLabel", background=surface, font=base_font, foreground=text
+    )
     style.configure("Heading.TLabel", font=large_font)
-    style.configure("TEntry", relief="flat", padding=6)
-    style.map("TEntry", foreground=[("focus", text)])
+    style.configure(
+        "Heading.Surface.TLabel",
+        background=surface,
+        font=large_font,
+        foreground=text,
+    )
+    style.configure("TEntry", relief="flat", padding=6, foreground="black")
+    style.map("TEntry", foreground=[("focus", "black")])
 
     style.configure("TNotebook", background=background, padding=10)
     style.configure(
@@ -129,8 +155,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     style.configure("TRadiobutton", background=background, padding=5)
     style.configure("TCheckbutton", background=background, padding=5)
 
-    style.configure(
-        "Vertical.TScrollbar",
+    scroll_conf = dict(
         gripcount=0,
         background=light,
         darkcolor=light,
@@ -139,9 +164,34 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         bordercolor=light,
         arrowcolor=primary,
     )
+    style.configure("Vertical.TScrollbar", **scroll_conf)
+    style.configure("Horizontal.TScrollbar", **scroll_conf)
 
     style.configure("Toplevel", background=background)
 
     if master is not None:
         master.configure(bg=background)
+
+    tree_border = 0 if theme == "dark" else 1
+    style.configure(
+        "Probability.Treeview",
+        background=surface,
+        fieldbackground=surface,
+        foreground=text,
+        bordercolor=light,
+        borderwidth=tree_border,
+        rowheight=24,
+    )
+    style.map(
+        "Probability.Treeview",
+        background=[("selected", primary)],
+    )
+    style.configure(
+        "Probability.Treeview.Heading",
+        background=light,
+        foreground=text,
+        font=bold_font,
+        relief="flat",
+        borderwidth=0,
+    )
 
