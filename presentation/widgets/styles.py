@@ -97,7 +97,16 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         borderwidth=surface_border,
     )
     style.configure("TLabel", background=background, font=base_font, foreground=text)
+    style.configure(
+        "Surface.TLabel", background=surface, font=base_font, foreground=text
+    )
     style.configure("Heading.TLabel", font=large_font)
+    style.configure(
+        "Heading.Surface.TLabel",
+        background=surface,
+        font=large_font,
+        foreground=text,
+    )
     style.configure("TEntry", relief="flat", padding=6, foreground="black")
     style.map("TEntry", foreground=[("focus", "black")])
 
@@ -136,8 +145,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     style.configure("TRadiobutton", background=background, padding=5)
     style.configure("TCheckbutton", background=background, padding=5)
 
-    style.configure(
-        "Vertical.TScrollbar",
+    scroll_conf = dict(
         gripcount=0,
         background=light,
         darkcolor=light,
@@ -146,6 +154,8 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         bordercolor=light,
         arrowcolor=primary,
     )
+    style.configure("Vertical.TScrollbar", **scroll_conf)
+    style.configure("Horizontal.TScrollbar", **scroll_conf)
 
     style.configure("Toplevel", background=background)
 

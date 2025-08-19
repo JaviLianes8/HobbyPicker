@@ -54,21 +54,29 @@ def start_app() -> None:
     content_frame.grid(row=0, column=0, sticky="nsew")
 
     table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=220)
-    table_frame.grid(row=0, column=1, sticky="ns", padx=10, pady=10)
+    table_frame.grid(row=0, column=1, sticky="nsew", padx=10)
     table_frame.grid_propagate(False)
+    table_frame.rowconfigure(0, weight=1)
+    table_frame.columnconfigure(0, weight=1)
 
     prob_table = ttk.Treeview(
         table_frame,
         columns=("activity", "percent"),
         show="headings",
-        height=15,
         style="Probability.Treeview",
     )
     prob_table.heading("activity", text="Actividad")
     prob_table.heading("percent", text="%")
     prob_table.column("activity", width=160, anchor="w")
     prob_table.column("percent", width=60, anchor="center")
-    prob_table.pack(fill="y", expand=False)
+
+    v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
+    h_scroll = ttk.Scrollbar(table_frame, orient="horizontal", command=prob_table.xview)
+    prob_table.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
+
+    prob_table.grid(row=0, column=0, sticky="nsew")
+    v_scroll.grid(row=0, column=1, sticky="ns")
+    h_scroll.grid(row=1, column=0, sticky="ew")
 
     def refresh_probabilities():
         for row in prob_table.get_children():
@@ -84,6 +92,7 @@ def start_app() -> None:
         font=("Segoe UI", 28, "bold"),
         wraplength=500,
         justify="center",
+        style="Surface.TLabel",
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
 
@@ -125,7 +134,7 @@ def start_app() -> None:
             suggestion_label.config(text="Pulsa el botón para sugerencia")
             refresh_probabilities()
 
-    button_container = ttk.Frame(content_frame)
+    button_container = ttk.Frame(content_frame, style="Surface.TFrame")
     button_container.pack(pady=(20, 40))
 
     ttk.Button(
@@ -150,22 +159,22 @@ def start_app() -> None:
 
     notebook.bind("<<NotebookTabChanged>>", on_tab_change)
 
-    # --- Pestaña: Configurar gustos ---
-    frame_config = ttk.Frame(notebook)
-    notebook.add(frame_config, text="⚙️ Configurar gustos")
+    # --- Pestaña: Configurar hobbies ---
+    frame_config = ttk.Frame(notebook, style="Surface.TFrame")
+    notebook.add(frame_config, text="⚙️ Configurar hobbies")
 
-    main_config_layout = ttk.Frame(frame_config)
+    main_config_layout = ttk.Frame(frame_config, style="Surface.TFrame")
     main_config_layout.pack(fill="both", expand=True)
 
     canvas = tk.Canvas(
-        main_config_layout, bg=get_color("background"), highlightthickness=0
+        main_config_layout, bg=get_color("surface"), highlightthickness=0
     )
     scrollbar = ttk.Scrollbar(
         main_config_layout, orient="vertical", command=canvas.yview
     )
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    scrollable_frame = ttk.Frame(canvas)
+    scrollable_frame = ttk.Frame(canvas, style="Surface.TFrame")
 
     def update_scrollregion(e=None):
         canvas.configure(scrollregion=canvas.bbox("all"))
@@ -181,7 +190,7 @@ def start_app() -> None:
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    sticky_bottom = ttk.Frame(main_config_layout)
+    sticky_bottom = ttk.Frame(main_config_layout, style="Surface.TFrame")
     sticky_bottom.pack(fill="x", side="bottom", pady=5)
     ttk.Button(
         sticky_bottom, text="➕ Añadir hobby", command=lambda: open_add_hobby_window()
@@ -200,7 +209,7 @@ def start_app() -> None:
             row.columnconfigure(1, weight=0)
 
             label = ttk.Label(
-                row, text=hobby[1], anchor="w", style="Heading.TLabel"
+                row, text=hobby[1], anchor="w", style="Heading.Surface.TLabel"
             )
             label.grid(row=0, column=0, sticky="w", padx=10, pady=8)
 
@@ -235,7 +244,7 @@ def start_app() -> None:
         edit_window.minsize(400, 600)
 
         ttk.Label(edit_window, text="Subelementos:").pack(pady=5)
-        items_frame = ttk.Frame(edit_window)
+        items_frame = ttk.Frame(edit_window, style="Surface.TFrame")
         items_frame.pack(fill="both", expand=True, pady=5)
 
         def refresh_items():
@@ -245,7 +254,7 @@ def start_app() -> None:
                 row = ttk.Frame(items_frame, style="Surface.TFrame")
                 row.pack(fill="x", pady=2, padx=10)
 
-                label = ttk.Label(row, text=item[2], anchor="w")
+                label = ttk.Label(row, text=item[2], anchor="w", style="Surface.TLabel")
                 label.pack(side="left", expand=True)
 
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
