@@ -2,7 +2,6 @@ import sqlite3
 import random
 import os
 
-DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db"))
 DB_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "hobbypicker.db")
 )
@@ -24,12 +23,21 @@ class ActivityDAO:
                         done INTEGER DEFAULT 0,
                         accepted_count INTEGER DEFAULT 0
                     )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS subitems (
+        c.execute(
+            """CREATE TABLE IF NOT EXISTS subitems (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         activity_id INTEGER,
                         name TEXT,
+                        accepted_count INTEGER DEFAULT 0,
                         FOREIGN KEY (activity_id) REFERENCES activities(id)
-                    )""")
+                    )"""
+        )
+        try:
+            c.execute(
+                "ALTER TABLE subitems ADD COLUMN accepted_count INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass
         self.conn.commit()
 
     def get_all_activities(self):
@@ -37,7 +45,8 @@ class ActivityDAO:
 
     def get_subitems_by_activity(self, activity_id):
         return self.conn.execute(
-            "SELECT id, activity_id, name FROM subitems WHERE activity_id = ?", (activity_id,)
+            "SELECT id, activity_id, name, accepted_count FROM subitems WHERE activity_id = ?",
+            (activity_id,),
         ).fetchall()
 
     def get_random_with_subitems(self):
@@ -77,7 +86,10 @@ class ActivityDAO:
         return c.fetchone()[0]
 
     def insert_subitem(self, activity_id, name):
-        self.conn.execute("INSERT INTO subitems (activity_id, name) VALUES (?, ?)", (activity_id, name))
+        self.conn.execute(
+            "INSERT INTO subitems (activity_id, name) VALUES (?, ?)",
+            (activity_id, name),
+        )
         self.conn.commit()
 
     def delete_subitem(self, subitem_id):
@@ -93,5 +105,15 @@ class ActivityDAO:
         return self.conn.execute("SELECT id, name, accepted_count FROM activities").fetchall()
     
     def update_subitem(self, subitem_id, new_name):
-        self.conn.execute("UPDATE subitems SET name = ? WHERE id = ?", (new_name, subitem_id))
+        self.conn.execute(
+            "UPDATE subitems SET name = ? WHERE id = ?",
+            (new_name, subitem_id),
+        )
+        self.conn.commit()
+
+    def increment_subitem_count(self, subitem_id):
+        self.conn.execute(
+            "UPDATE subitems SET accepted_count = accepted_count + 1 WHERE id = ?",
+            (subitem_id,),
+        )
         self.conn.commit()

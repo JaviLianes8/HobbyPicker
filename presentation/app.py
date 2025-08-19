@@ -44,7 +44,7 @@ def start_app() -> None:
 
     refresh_wheel()
 
-    current_activity = {"id": None, "name": None}
+    current_item = {"id": None, "name": None}
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -53,8 +53,8 @@ def start_app() -> None:
             return
 
         final_id, final_text = result
-        current_activity["id"] = final_id
-        current_activity["name"] = final_text
+        current_item["id"] = final_id
+        current_item["name"] = final_text
 
         options = []
         for _ in range(30):
@@ -74,10 +74,10 @@ def start_app() -> None:
         wheel.spin_to(final_id)
 
     def accept():
-        if current_activity["id"]:
-            use_cases.mark_activity_as_done(current_activity["id"])
-            current_activity["id"] = None
-            current_activity["name"] = None
+        if current_item["id"]:
+            use_cases.mark_item_as_done(current_item["id"])
+            current_item["id"] = None
+            current_item["name"] = None
             suggestion_label.config(text="Pulsa el botón para sugerencia")
             refresh_wheel()
             wheel.highlight(None)

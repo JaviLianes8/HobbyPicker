@@ -66,13 +66,14 @@ class RouletteCanvas(tk.Canvas):
         if arc_id:
             self.itemconfig(arc_id, width=4, outline="yellow")
 
-    def spin_to(self, activity_id, cycles=3, base_delay=50):
-        """Animate a spin highlighting slices until reaching the target.
+    def spin_to(self, activity_id, cycles=3, base_delay=20, extra_delay=300):
+        """Animate a spin highlighting slices with easing until reaching the target.
 
         Args:
             activity_id: Identifier of the slice to stop on.
             cycles: How many full cycles to make before stopping.
-            base_delay: Initial delay between highlights in ms.
+            base_delay: Minimum delay between highlights in ms.
+            extra_delay: Extra delay added near the end to simulate deceleration.
         """
         if activity_id not in self._arcs:
             return
@@ -80,11 +81,13 @@ class RouletteCanvas(tk.Canvas):
         path = self._order * cycles
         target_index = self._order.index(activity_id)
         path += self._order[: target_index + 1]
+        total_steps = len(path)
 
         def step(i=0):
             self.highlight(path[i])
-            if i + 1 < len(path):
-                delay = base_delay + i * 5
-                self.after(delay, lambda: step(i + 1))
+            if i + 1 < total_steps:
+                progress = i / total_steps
+                delay = base_delay + (progress ** 2) * extra_delay
+                self.after(int(delay), lambda: step(i + 1))
 
         step()
