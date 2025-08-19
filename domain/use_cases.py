@@ -14,12 +14,12 @@ def get_weighted_random_valid_activity():
     for act in activities:
         hobby_id, name, count = act
         subitems = dao.get_subitems_by_activity(hobby_id)
-        display_name = name
-        if subitems:
-            sub = random.choice(subitems)[2]
-            display_name += f" + {sub}"
         weight = max_count - count
-        weighted.extend([(hobby_id, display_name)] * weight)
+        if subitems:
+            for sub in subitems:
+                weighted.extend([(hobby_id, f"{name} + {sub[2]}")] * weight)
+        else:
+            weighted.extend([(hobby_id, name)] * weight)
 
     return random.choice(weighted) if weighted else None
 
@@ -58,9 +58,8 @@ def get_activity_probabilities():
         weight = max_count - count
         subitems = dao.get_subitems_by_activity(hobby_id)
         if subitems:
-            portion = weight / len(subitems)
             for sub in subitems:
-                weighted.append((f"{name} + {sub[2]}", portion))
+                weighted.append((f"{name} + {sub[2]}", weight))
         else:
             weighted.append((name, weight))
 

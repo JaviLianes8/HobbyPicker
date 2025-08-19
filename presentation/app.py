@@ -30,9 +30,7 @@ def start_app() -> None:
     def change_theme_to(value: str) -> None:
         apply_style(root, theme_options[value])
         if canvas is not None:
-            canvas.configure(bg=get_color("background"))
-        if separator is not None:
-            separator.configure(bg=get_color("contrast"))
+            canvas.configure(bg=get_color("surface"))
 
     menubar = tk.Menu(root)
     theme_menu = tk.Menu(menubar, tearoff=0)
@@ -59,8 +57,8 @@ def start_app() -> None:
     content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
     content_frame.grid(row=0, column=0, sticky="nsew")
 
-    separator = tk.Frame(frame_suggest, width=2, bg=get_color("contrast"))
-    separator.grid(row=0, column=1, sticky="ns")
+    separator = ttk.Separator(frame_suggest, orient="vertical")
+    separator.grid(row=0, column=1, sticky="ns", padx=5)
 
     table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=660)
     table_frame.grid(row=0, column=2, sticky="nsew", padx=10)
