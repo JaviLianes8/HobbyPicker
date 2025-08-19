@@ -5,14 +5,18 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+from presentation.widgets.roulette_canvas import RouletteCanvas
 
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
-    WindowUtils.center_window(root, 800, 600)
     root.title("HobbyPicker")
-    root.minsize(800, 600)
+    root.state("zoomed")  # maximized but keeps window controls
+    root.resizable(False, False)
     apply_style(root)
+
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
@@ -24,14 +28,27 @@ def start_app() -> None:
     suggestion_label = ttk.Label(
         frame_suggest,
         text="Pulsa el botón para sugerencia",
-        font=("Segoe UI", 28, "bold"),
-        wraplength=700,
-        justify="center"
+        font=("Segoe UI", 40, "bold"),
+        wraplength=screen_width - 200,
+        justify="center",
     )
 
-    suggestion_label.pack(pady=(60, 40), expand=True)
+    suggestion_label.pack(pady=(40, 40))
 
-    current_activity = {"id": None, "name": None}
+    wheel_size = int(min(screen_width, screen_height) * 0.6)
+    wheel = RouletteCanvas(frame_suggest, width=wheel_size, height=wheel_size)
+    wheel.pack(pady=20)
+
+    def refresh_wheel():
+        data = [
+            {"id": d[0], "name": d[1], "weight": d[2], "percentage": d[3]}
+            for d in use_cases.get_activity_weights()
+        ]
+        wheel.draw(data)
+
+    root.after(100, refresh_wheel)
+
+    current_item = {"id": None, "name": None}
 
     def suggest():
         result = use_cases.get_weighted_random_valid_activity()
@@ -40,37 +57,30 @@ def start_app() -> None:
             return
 
         final_id, final_text = result
-        current_activity["id"] = final_id
-        current_activity["name"] = final_text
+        current_item["id"] = final_id
+        current_item["name"] = final_text
 
-        options = []
-        for _ in range(30):
-            alt = use_cases.get_weighted_random_valid_activity()
-            if alt:
-                options.append(alt[1])
-        options.append(final_text)
-
-        def animate(i=0):
-            if i < len(options):
-                suggestion_label.config(text=f"¿Qué tal hacer: {options[i]}?")
-                root.after(100, lambda: animate(i + 1))
-            else:
-                suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
-
-        animate()
+        wheel.spin_to(
+            final_id,
+            on_step=lambda _id, name: suggestion_label.config(
+                text=f"¿Qué tal hacer: {name}?"
+            ),
+        )
 
     def accept():
-        if current_activity["id"]:
-            use_cases.mark_activity_as_done(current_activity["id"])
-            current_activity["id"] = None
-            current_activity["name"] = None
+        if current_item["id"]:
+            use_cases.mark_item_as_done(current_item["id"])
+            current_item["id"] = None
+            current_item["name"] = None
             suggestion_label.config(text="Pulsa el botón para sugerencia")
+            refresh_wheel()
+            wheel.highlight(None)
 
     button_container = ttk.Frame(frame_suggest)
-    button_container.pack(pady=(20, 40))
+    button_container.pack(pady=(40, 60))
 
-    ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=20).pack(pady=10)
-    ttk.Button(button_container, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20).pack(pady=10)
+    ttk.Button(button_container, text="🎲 Sugerir hobby", command=suggest, style="Big.TButton", width=25).pack(pady=10)
+    ttk.Button(button_container, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=25).pack(pady=10)
 
     # --- Pestaña: Configurar gustos ---
     frame_config = ttk.Frame(notebook)
@@ -103,6 +113,7 @@ def start_app() -> None:
     hobbies_container = scrollable_frame
 
     def refresh_listbox():
+        refresh_wheel()
         for widget in hobbies_container.winfo_children():
             widget.destroy()
         for hobby in use_cases.get_all_hobbies():

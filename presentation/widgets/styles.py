@@ -46,7 +46,7 @@ def apply_style(master: ttk.Widget | None = None) -> None:
         background=[("active", primary_hover), ("disabled", light)],
         relief=[("pressed", "sunken")])
 
-    style.configure("Big.TButton", font=large_font, padding=(12, 10))
+    style.configure("Big.TButton", font=("Helvetica", 18, "bold"), padding=(20, 16))
 
     # 📃 Listbox (manual styling via widget config en app)
     # No se aplica por Style, se estiliza en el código si quieres (scrollbar, colors...)
