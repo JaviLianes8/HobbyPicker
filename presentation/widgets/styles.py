@@ -88,11 +88,18 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 
     style.configure(".", background=background, foreground=text, font=base_font)
     style.configure("TFrame", background=background)
-    style.configure("Surface.TFrame", background=surface, relief="ridge", borderwidth=1)
+    surface_border = 0 if theme == "dark" else 1
+    surface_relief = "flat" if theme == "dark" else "ridge"
+    style.configure(
+        "Surface.TFrame",
+        background=surface,
+        relief=surface_relief,
+        borderwidth=surface_border,
+    )
     style.configure("TLabel", background=background, font=base_font, foreground=text)
     style.configure("Heading.TLabel", font=large_font)
-    style.configure("TEntry", relief="flat", padding=6)
-    style.map("TEntry", foreground=[("focus", text)])
+    style.configure("TEntry", relief="flat", padding=6, foreground="black")
+    style.map("TEntry", foreground=[("focus", "black")])
 
     style.configure("TNotebook", background=background, padding=10)
     style.configure(
@@ -145,13 +152,14 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     if master is not None:
         master.configure(bg=background)
 
+    tree_border = 0 if theme == "dark" else 1
     style.configure(
         "Probability.Treeview",
         background=surface,
         fieldbackground=surface,
         foreground=text,
         bordercolor=light,
-        borderwidth=1,
+        borderwidth=tree_border,
         rowheight=24,
     )
     style.map(
@@ -163,5 +171,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         background=light,
         foreground=text,
         font=bold_font,
+        relief="flat",
+        borderwidth=0,
     )
 

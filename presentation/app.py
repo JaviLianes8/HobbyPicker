@@ -47,11 +47,15 @@ def start_app() -> None:
     frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
     notebook.add(frame_suggest, text="¿Qué hago hoy?")
 
-    content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
-    content_frame.pack(side="left", fill="both", expand=True)
+    frame_suggest.columnconfigure(0, weight=1)
+    frame_suggest.rowconfigure(0, weight=1)
 
-    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
-    table_frame.pack(side="right", fill="y", padx=10, pady=10)
+    content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
+    content_frame.grid(row=0, column=0, sticky="nsew")
+
+    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=220)
+    table_frame.grid(row=0, column=1, sticky="ns", padx=10, pady=10)
+    table_frame.grid_propagate(False)
 
     prob_table = ttk.Treeview(
         table_frame,
@@ -78,7 +82,7 @@ def start_app() -> None:
         content_frame,
         text="Pulsa el botón para sugerencia",
         font=("Segoe UI", 28, "bold"),
-        wraplength=700,
+        wraplength=500,
         justify="center",
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
