@@ -47,8 +47,35 @@ def start_app() -> None:
     frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
     notebook.add(frame_suggest, text="¿Qué hago hoy?")
 
+    content_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
+    content_frame.pack(side="left", fill="both", expand=True)
+
+    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame")
+    table_frame.pack(side="right", fill="y", padx=10, pady=10)
+
+    prob_table = ttk.Treeview(
+        table_frame,
+        columns=("activity", "percent"),
+        show="headings",
+        height=15,
+        style="Probability.Treeview",
+    )
+    prob_table.heading("activity", text="Actividad")
+    prob_table.heading("percent", text="%")
+    prob_table.column("activity", width=160, anchor="w")
+    prob_table.column("percent", width=60, anchor="center")
+    prob_table.pack(fill="y", expand=False)
+
+    def refresh_probabilities():
+        for row in prob_table.get_children():
+            prob_table.delete(row)
+        for name, prob in use_cases.get_activity_probabilities():
+            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"))
+
+    refresh_probabilities()
+
     suggestion_label = ttk.Label(
-        frame_suggest,
+        content_frame,
         text="Pulsa el botón para sugerencia",
         font=("Segoe UI", 28, "bold"),
         wraplength=700,
@@ -92,8 +119,9 @@ def start_app() -> None:
             current_activity["id"] = None
             current_activity["name"] = None
             suggestion_label.config(text="Pulsa el botón para sugerencia")
+            refresh_probabilities()
 
-    button_container = ttk.Frame(frame_suggest)
+    button_container = ttk.Frame(content_frame)
     button_container.pack(pady=(20, 40))
 
     ttk.Button(
@@ -111,6 +139,12 @@ def start_app() -> None:
         style="Big.TButton",
         width=20,
     ).pack(pady=10)
+
+    def on_tab_change(event):
+        if notebook.index("current") == 0:
+            refresh_probabilities()
+
+    notebook.bind("<<NotebookTabChanged>>", on_tab_change)
 
     # --- Pestaña: Configurar gustos ---
     frame_config = ttk.Frame(notebook)

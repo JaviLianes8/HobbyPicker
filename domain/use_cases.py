@@ -46,3 +46,25 @@ def delete_hobby(hobby_id):
 
 def update_subitem(subitem_id, new_name):
     dao.update_subitem(subitem_id, new_name)
+
+
+def get_activity_probabilities():
+    activities = dao.get_all_with_counts()
+    if not activities:
+        return []
+
+    max_count = max(a[2] for a in activities) + 1
+    total_weight = sum(max_count - a[2] for a in activities)
+
+    result = []
+    for hobby_id, name, count in activities:
+        weight = max_count - count
+        subitems = dao.get_subitems_by_activity(hobby_id)
+        if subitems:
+            sub_prob = weight / total_weight / len(subitems)
+            for sub in subitems:
+                result.append((f"{name} + {sub[2]}", sub_prob))
+        else:
+            result.append((name, weight / total_weight))
+    return result
+

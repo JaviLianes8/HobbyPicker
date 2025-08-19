@@ -145,3 +145,23 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     if master is not None:
         master.configure(bg=background)
 
+    style.configure(
+        "Probability.Treeview",
+        background=surface,
+        fieldbackground=surface,
+        foreground=text,
+        bordercolor=light,
+        borderwidth=1,
+        rowheight=24,
+    )
+    style.map(
+        "Probability.Treeview",
+        background=[("selected", primary)],
+    )
+    style.configure(
+        "Probability.Treeview.Heading",
+        background=light,
+        foreground=text,
+        font=bold_font,
+    )
+
