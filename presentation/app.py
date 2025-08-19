@@ -10,6 +10,7 @@ from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 def start_app() -> None:
     """Launch the main HobbyPicker window."""
     root = tk.Tk()
+    root.state("zoomed")
     WindowUtils.center_window(root, 1240, 600)
     root.title("HobbyPicker")
     root.minsize(1240, 600)
