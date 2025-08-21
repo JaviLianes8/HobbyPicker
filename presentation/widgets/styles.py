@@ -177,6 +177,11 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 
     style.configure("TRadiobutton", background=background, padding=5)
     style.configure("TCheckbutton", background=background, padding=5)
+    style.map(
+        "TCheckbutton",
+        background=[("disabled", background)],
+        foreground=[("disabled", text)],
+    )
 
     scroll_conf = dict(
         gripcount=0,
