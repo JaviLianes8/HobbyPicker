@@ -1,10 +1,11 @@
 import json
 import locale
+import os
 import random
 import threading
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import urlencode, urlparse, parse_qs, quote
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import requests
@@ -106,6 +107,10 @@ def start_app() -> None:
             "steam_import_success": "Se importaron {count} juegos.",
             "steam_import_error": "No se pudo importar los juegos.",
             "steam_hobby_name": "Jugar",
+            "steam_action_prompt": "¿Qué quieres hacer con '{name}'?",
+            "steam_play": "Jugar juego",
+            "steam_install": "Instalar juego",
+            "steam_not_found": "No se encontró el juego en Steam.",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -153,6 +158,10 @@ def start_app() -> None:
             "steam_import_success": "Imported {count} games.",
             "steam_import_error": "Could not import games.",
             "steam_hobby_name": "Play",
+            "steam_action_prompt": "What do you want to do with '{name}'?",
+            "steam_play": "Play game",
+            "steam_install": "Install game",
+            "steam_not_found": "Could not find the game on Steam.",
         },
     }
 
@@ -235,6 +244,69 @@ def start_app() -> None:
             messagebox.showinfo("Steam", tr("steam_import_success").format(count=len(new_games)))
         except Exception:
             messagebox.showerror(tr("error"), tr("steam_import_error"))
+
+    def get_steam_appid(game_name: str) -> int | None:
+        try:
+            resp = requests.get(
+                "https://steamcommunity.com/actions/SearchApps/" + quote(game_name),
+                timeout=5,
+            )
+            data = resp.json()
+            return int(data[0]["appid"]) if data else None
+        except Exception:
+            return None
+
+    def is_steam_game_installed(appid: int) -> bool:
+        steam_paths = []
+        if os.name == "nt":
+            steam_paths.append(
+                Path(os.environ.get("PROGRAMFILES(X86)", r"C:\\Program Files (x86)"))
+                / "Steam/steamapps"
+            )
+        else:
+            steam_paths.extend(
+                [
+                    Path.home() / ".steam/steam/steamapps",
+                    Path.home() / ".local/share/Steam/steamapps",
+                    Path.home() / "Library/Application Support/Steam/steamapps",
+                ]
+            )
+        for path in steam_paths:
+            if (path / f"appmanifest_{appid}.acf").exists():
+                return True
+        return False
+
+    def show_game_popup(game_name: str) -> None:
+        appid = get_steam_appid(game_name)
+        if not appid:
+            messagebox.showerror("Steam", tr("steam_not_found"))
+            return
+        installed = is_steam_game_installed(appid)
+        dlg = tk.Toplevel(root)
+        apply_style(dlg)
+        dlg.title("Steam")
+        WindowUtils.center_window(dlg, 300, 120)
+        ttk.Label(
+            dlg, text=tr("steam_action_prompt").format(name=game_name)
+        ).pack(padx=20, pady=10)
+
+        def act() -> None:
+            url = (
+                f"steam://rungameid/{appid}"
+                if installed
+                else f"steam://install/{appid}"
+            )
+            webbrowser.open(url)
+            dlg.destroy()
+
+        btn = ttk.Button(
+            dlg,
+            text=tr("steam_play") if installed else tr("steam_install"),
+            command=act,
+            width=20,
+        )
+        btn.pack(pady=10)
+        add_button_hover(btn)
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -583,9 +655,21 @@ def start_app() -> None:
     def accept():
         nonlocal final_canvas, final_timeout_id
         if current_activity["id"]:
+            is_game = (
+                current_activity["is_subitem"]
+                and current_activity["name"]
+                and current_activity["name"].startswith(tr("steam_hobby_name") + " + ")
+            )
+            game_name = (
+                current_activity["name"].split(" + ", 1)[1]
+                if is_game
+                else ""
+            )
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
             )
+            if is_game:
+                show_game_popup(game_name)
             current_activity["id"] = None
             current_activity["name"] = None
             current_activity["is_subitem"] = False
