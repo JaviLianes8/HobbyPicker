@@ -1,7 +1,13 @@
 import json
 import locale
 import random
+import threading
+import webbrowser
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlencode, urlparse, parse_qs
 from pathlib import Path
+import xml.etree.ElementTree as ET
+import requests
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
@@ -10,6 +16,8 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+
+
 
 
 def start_app() -> None:
@@ -37,6 +45,7 @@ def start_app() -> None:
 
     lang_var = tk.StringVar(value=settings["language"])
     theme_var = tk.StringVar(value=settings["theme"])
+
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -93,6 +102,10 @@ def start_app() -> None:
             "save": "Guardar",
             "error": "Error",
             "need_title": "Debes introducir un título.",
+            "steam_import_confirm": "¿Importar juegos de Steam?",
+            "steam_import_success": "Se importaron {count} juegos.",
+            "steam_import_error": "No se pudo importar los juegos.",
+            "steam_hobby_name": "Jugar",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -136,6 +149,10 @@ def start_app() -> None:
             "save": "Save",
             "error": "Error",
             "need_title": "You must enter a title.",
+            "steam_import_confirm": "Import Steam games?",
+            "steam_import_success": "Imported {count} games.",
+            "steam_import_error": "Could not import games.",
+            "steam_hobby_name": "Play",
         },
     }
 
@@ -148,6 +165,67 @@ def start_app() -> None:
 
     def tr(key: str) -> str:
         return LANG_TEXT[get_effective_language()][key]
+
+    def login_steam_id() -> str | None:
+        result = {"id": None}
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                params = parse_qs(urlparse(self.path).query)
+                claimed = params.get("openid.claimed_id", [None])[0]
+                if claimed:
+                    result["id"] = claimed.rsplit("/", 1)[-1]
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"Login successful. You may close this window.")
+                else:
+                    self.send_response(400)
+                    self.end_headers()
+                threading.Thread(target=httpd.shutdown).start()
+
+            def log_message(self, format, *args):
+                pass
+
+        httpd = HTTPServer(("localhost", 5000), Handler)
+        thread = threading.Thread(target=httpd.serve_forever)
+        thread.start()
+        params = {
+            "openid.ns": "http://specs.openid.net/auth/2.0",
+            "openid.mode": "checkid_setup",
+            "openid.return_to": "http://localhost:5000/",
+            "openid.realm": "http://localhost:5000/",
+            "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+            "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+        }
+        webbrowser.open("https://steamcommunity.com/openid/login?" + urlencode(params))
+        thread.join()
+        httpd.server_close()
+        return result["id"]
+
+    def import_steam_games() -> None:
+        if not messagebox.askyesno("Steam", tr("steam_import_confirm")):
+            return
+        steam_id = login_steam_id()
+        if not steam_id:
+            return
+        try:
+            url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
+            data = requests.get(url, timeout=10).content
+            root_xml = ET.fromstring(data)
+            games = [g.findtext("name") for g in root_xml.findall("./games/game") if g.findtext("name")]
+            if not games:
+                raise ValueError
+            hobby_id = use_cases.create_hobby(tr("steam_hobby_name"))
+            existing = {s[2] for s in use_cases.get_subitems_for_hobby(hobby_id)}
+            new_games = [g for g in games if g not in existing]
+            for name in new_games:
+                use_cases.add_subitem_to_hobby(hobby_id, name)
+            refresh_listbox()
+            if refresh_probabilities:
+                refresh_probabilities()
+            messagebox.showinfo("Steam", tr("steam_import_success").format(count=len(new_games)))
+        except Exception:
+            messagebox.showerror(tr("error"), tr("steam_import_error"))
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -202,6 +280,7 @@ def start_app() -> None:
                 command=lambda c=code: change_language(c)
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+        menubar.add_command(label="Steam", command=import_steam_games)
         root.config(menu=menubar)
 
     def update_texts() -> None:
