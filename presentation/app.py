@@ -208,7 +208,7 @@ def start_app() -> None:
         current_activity["is_subitem"] = is_sub
 
         options = []
-        for _ in range(30):
+        for _ in range(20):
             alt = use_cases.get_weighted_random_valid_activity()
             if alt:
                 options.append(alt[1])
@@ -231,8 +231,9 @@ def start_app() -> None:
                 x + box_w / 2,
                 box_h / 2,
                 text=text,
-                width=box_w - 10,
+                width=box_w - 20,
                 fill=get_color("text"),
+                font=("Segoe UI", 32, "bold"),
                 tags=("item",),
             )
         animation_canvas.create_rectangle(
@@ -249,16 +250,16 @@ def start_app() -> None:
 
         total_shift = (len(options) - 3) * box_w
 
-        def roll(step=0, speed=25):
+        def roll(step=0, speed=60):
             if step < total_shift:
                 animation_canvas.move("item", -speed, 0)
                 step += speed
-                if total_shift - step < box_w * 2 and speed > 2:
-                    speed -= 1
-                root.after(20, lambda: roll(step, speed))
+                if total_shift - step < box_w * 2 and speed > 5:
+                    speed -= random.randint(2, 4)
+                root.after(15, lambda: roll(step, speed))
             else:
                 animation_canvas.move("item", -(total_shift - step), 0)
-                animation_canvas.after(300, finish)
+                animation_canvas.after(150, finish)
 
         def finish():
             animation_canvas.pack_forget()
