@@ -1,4 +1,7 @@
+import json
+import locale
 import random
+from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
@@ -17,10 +20,36 @@ def start_app() -> None:
     root.title("HobbyPicker")
     root.minsize(1240, 600)
 
-    apply_style(root, "system")
+    config_path = Path.home() / ".hobbypicker.json"
+
+    def load_settings() -> dict[str, str]:
+        sys_lang = locale.getdefaultlocale()[0] or "en"
+        lang = "es" if sys_lang.lower().startswith("es") else "en"
+        data = {"language": lang, "theme": "system"}
+        try:
+            if config_path.exists():
+                with config_path.open("r", encoding="utf-8") as fh:
+                    stored = json.load(fh)
+                data.update({k: stored.get(k, v) for k, v in data.items()})
+        except Exception:
+            pass
+        return data
+
+    settings = load_settings()
+
+    lang_var = tk.StringVar(value=settings["language"])
+    theme_var = tk.StringVar(value=settings["theme"])
+
+    def save_settings() -> None:
+        try:
+            with config_path.open("w", encoding="utf-8") as fh:
+                json.dump({"language": lang_var.get(), "theme": theme_var.get()}, fh)
+        except Exception:
+            pass
+
+    apply_style(root, theme_var.get())
 
     # --- Soporte de idiomas ---
-    lang_var = tk.StringVar(value="es")
     LANG_TEXT = {
         "es": {
             "tab_today": "¿Qué hago hoy?",
@@ -38,6 +67,29 @@ def start_app() -> None:
             "theme_light": "Claro",
             "theme_dark": "Oscuro",
             "add_hobby": "➕ Añadir hobby",
+            "col_activity": "Actividad",
+            "col_percent": "%",
+            "delete": "Eliminar",
+            "delete_hobby_confirm": "¿Eliminar hobby '{name}'? Esta acción es irreversible.",
+            "deleted": "Eliminado",
+            "hobby_deleted": "Hobby '{name}' eliminado.",
+            "subitems": "Subelementos:",
+            "edit_hobby_title": "Editar: {name}",
+            "edit_subitem_title": "Editar subelemento",
+            "new_name_prompt": "Nuevo nombre para '{name}':",
+            "delete_subitem_confirm": "¿Eliminar subelemento '{name}'?",
+            "new_subitem_title": "Nuevo subelemento",
+            "new_subitem_prompt": "Introduce nuevo:",
+            "add_subitem_btn": "Añadir subelemento",
+            "subitem_title": "Subelemento",
+            "subitem_prompt": "Introduce un elemento relacionado:",
+            "another_title": "¿Otro más?",
+            "another_prompt": "Introduce otro (o cancelar para terminar):",
+            "add_hobby_window_title": "Añadir nuevo hobby",
+            "hobby_title_label": "Título del hobby:",
+            "save": "Guardar",
+            "error": "Error",
+            "need_title": "Debes introducir un título.",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -55,6 +107,29 @@ def start_app() -> None:
             "theme_light": "Light",
             "theme_dark": "Dark",
             "add_hobby": "➕ Add hobby",
+            "col_activity": "Activity",
+            "col_percent": "%",
+            "delete": "Delete",
+            "delete_hobby_confirm": "Delete hobby '{name}'? This action cannot be undone.",
+            "deleted": "Deleted",
+            "hobby_deleted": "Hobby '{name}' deleted.",
+            "subitems": "Subitems:",
+            "edit_hobby_title": "Edit: {name}",
+            "edit_subitem_title": "Edit subitem",
+            "new_name_prompt": "New name for '{name}':",
+            "delete_subitem_confirm": "Delete subitem '{name}'?",
+            "new_subitem_title": "New subitem",
+            "new_subitem_prompt": "Enter new:",
+            "add_subitem_btn": "Add subitem",
+            "subitem_title": "Subitem",
+            "subitem_prompt": "Enter a related item:",
+            "another_title": "Another one?",
+            "another_prompt": "Enter another (or cancel to finish):",
+            "add_hobby_window_title": "Add new hobby",
+            "hobby_title_label": "Hobby title:",
+            "save": "Save",
+            "error": "Error",
+            "need_title": "You must enter a title.",
         },
     }
 
@@ -84,7 +159,6 @@ def start_app() -> None:
     notebook.pack(fill="both", expand=True)
 
     # --- Menús de tema e idioma ---
-    theme_var = tk.StringVar(value="system")
 
     def change_theme_to(value: str) -> None:
         apply_style(root, value)
@@ -95,12 +169,16 @@ def start_app() -> None:
         if final_canvas is not None:
             final_canvas.configure(bg=get_color("surface"))
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
+        if "refresh_probabilities" in globals():
+            refresh_probabilities()
+        save_settings()
 
     menubar = tk.Menu(root)
 
     def change_language(code: str) -> None:
         lang_var.set(code)
         update_texts()
+        save_settings()
 
     def rebuild_menus() -> None:
         menubar.delete(0, "end")
@@ -133,6 +211,8 @@ def start_app() -> None:
         suggest_btn.config(text=tr("suggest_button"))
         accept_btn.config(text=tr("accept_button"))
         add_hobby_btn.config(text=tr("add_hobby"))
+        prob_table.heading("activity", text=tr("col_activity"))
+        prob_table.heading("percent", text=tr("col_percent"))
         rebuild_menus()
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
@@ -171,9 +251,9 @@ def start_app() -> None:
         show="headings",
         style="Probability.Treeview",
     )
-    prob_table.heading("activity", text="Actividad", anchor="center")
-    prob_table.heading("percent", text="%", anchor="center")
-    prob_table.column("activity", width=480, anchor="center")
+    prob_table.heading("activity", text=tr("col_activity"), anchor="w")
+    prob_table.heading("percent", text=tr("col_percent"), anchor="center")
+    prob_table.column("activity", width=480, anchor="w")
     prob_table.column("percent", width=180, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
@@ -185,8 +265,11 @@ def start_app() -> None:
     def refresh_probabilities():
         for row in prob_table.get_children():
             prob_table.delete(row)
-        for name, prob in use_cases.get_activity_probabilities():
-            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"))
+        prob_table.tag_configure("even", background=get_color("surface"))
+        prob_table.tag_configure("odd", background=get_color("light"))
+        for i, (name, prob) in enumerate(use_cases.get_activity_probabilities()):
+            tag = "even" if i % 2 == 0 else "odd"
+            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
 
     refresh_probabilities()
 
@@ -537,20 +620,20 @@ def start_app() -> None:
 
     def confirm_delete_hobby(hobby_id, hobby_name):
         if messagebox.askyesno(
-            "Eliminar", f"¿Eliminar hobby '{hobby_name}'? Esta acción es irreversible."
+            tr("delete"), tr("delete_hobby_confirm").format(name=hobby_name)
         ):
             use_cases.delete_hobby(hobby_id)
             refresh_listbox()
-            messagebox.showinfo("Eliminado", f"Hobby '{hobby_name}' eliminado.")
+            messagebox.showinfo(tr("deleted"), tr("hobby_deleted").format(name=hobby_name))
 
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
         apply_style(edit_window)
-        edit_window.title(f"Editar: {hobby_name}")
+        edit_window.title(tr("edit_hobby_title").format(name=hobby_name))
         WindowUtils.center_window(edit_window, 400, 600)
         edit_window.minsize(400, 600)
 
-        ttk.Label(edit_window, text="Subelementos:").pack(pady=5)
+        ttk.Label(edit_window, text=tr("subitems")).pack(pady=5)
         items_frame = ttk.Frame(edit_window, style="Surface.TFrame")
         items_frame.pack(fill="both", expand=True, pady=5)
 
@@ -569,8 +652,8 @@ def start_app() -> None:
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     new_name = SimpleEntryDialog.ask(
                         parent=edit_window,
-                        title="Editar subelemento",
-                        prompt=f"Nuevo nombre para '{current_name}':",
+                        title=tr("edit_subitem_title"),
+                        prompt=tr("new_name_prompt").format(name=current_name),
                         initial_value=current_name,
                     )
                     if new_name and new_name.strip() != current_name:
@@ -588,20 +671,24 @@ def start_app() -> None:
                 ).pack(side="right")
 
         def delete_item(item_id, name):
-            if messagebox.askyesno("Eliminar", f"¿Eliminar subelemento '{name}'?"):
+            if messagebox.askyesno(
+                tr("delete"), tr("delete_subitem_confirm").format(name=name)
+            ):
                 use_cases.delete_subitem(item_id)
                 refresh_items()
 
         def add_subitem():
             new_item = SimpleEntryDialog.ask(
-                parent=edit_window, title="Nuevo subelemento", prompt="Introduce nuevo:"
+                parent=edit_window,
+                title=tr("new_subitem_title"),
+                prompt=tr("new_subitem_prompt"),
             )
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
                 refresh_items()
 
         ttk.Button(
-            edit_window, text="Añadir subelemento", command=add_subitem
+            edit_window, text=tr("add_subitem_btn"), command=add_subitem
         ).pack(pady=10)
         refresh_items()
 
@@ -609,31 +696,31 @@ def start_app() -> None:
         def save_hobby():
             name = hobby_entry.get().strip()
             if not name:
-                messagebox.showerror("Error", "Debes introducir un título.")
+                messagebox.showerror(tr("error"), tr("need_title"))
                 return
             hobby_id = use_cases.create_hobby(name)
             sub = SimpleEntryDialog.ask(
-                parent=add_window, title="Subelemento", prompt="Introduce un elemento relacionado:"
+                parent=add_window, title=tr("subitem_title"), prompt=tr("subitem_prompt"),
             )
             while sub:
                 use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
                 sub = SimpleEntryDialog.ask(
                     parent=add_window,
-                    title="Otro más?",
-                    prompt="Introduce otro (o cancelar para terminar):",
+                    title=tr("another_title"),
+                    prompt=tr("another_prompt"),
                 )
             add_window.destroy()
             refresh_listbox()
 
         add_window = tk.Toplevel(root)
         apply_style(add_window)
-        add_window.title("Añadir nuevo hobby")
+        add_window.title(tr("add_hobby_window_title"))
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
-        ttk.Label(add_window, text="Título del hobby:").pack(pady=5)
+        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
         hobby_entry = ttk.Entry(add_window, width=40)
         hobby_entry.pack(pady=5)
-        ttk.Button(add_window, text="Guardar", command=save_hobby).pack(pady=10)
+        ttk.Button(add_window, text=tr("save"), command=save_hobby).pack(pady=10)
 
     refresh_listbox()
     root.mainloop()

@@ -97,8 +97,8 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 
     style.configure(".", background=background, foreground=text, font=base_font)
     style.configure("TFrame", background=background)
-    surface_border = 0 if theme == "dark" else 1
-    surface_relief = "flat" if theme == "dark" else "ridge"
+    surface_border = 0
+    surface_relief = "flat"
     style.configure(
         "Surface.TFrame",
         background=surface,
@@ -108,7 +108,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     style.configure(
         "Outlined.Surface.TFrame",
         background=surface,
-        bordercolor=contrast,
+        bordercolor=light,
         borderwidth=1,
         relief="solid",
     )
