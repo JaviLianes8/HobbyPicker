@@ -245,9 +245,8 @@ def start_app() -> None:
             new_games = [g for g in games if g not in all_existing]
             for name in new_games:
                 use_cases.add_subitem_to_hobby(hobby_id, name)
+            build_activity_caches()
             refresh_listbox()
-            if refresh_probabilities:
-                refresh_probabilities()
             messagebox.showinfo("Steam", tr("steam_import_success").format(count=len(new_games)))
         except Exception:
             messagebox.showerror(tr("error"), tr("steam_import_error"))
@@ -315,19 +314,37 @@ def start_app() -> None:
                 unique.append(resolved)
         return unique
 
-    @lru_cache(maxsize=None)
-    def is_steam_game_installed(appid: int) -> bool:
+    def _normalize_game_name(name: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", name.lower())
+
+    @lru_cache(maxsize=1)
+    def load_installed_games() -> dict[str, int]:
+        games: dict[str, int] = {}
         for path in discover_steam_libraries():
-            if (path / f"appmanifest_{appid}.acf").exists():
-                return True
-        return False
+            for manifest in path.glob("appmanifest_*.acf"):
+                try:
+                    text = manifest.read_text(encoding="utf-8", errors="ignore")
+                    appid_match = re.search(r'"appid"\s*"(\d+)"', text)
+                    name_match = re.search(r'"name"\s*"([^\"]+)"', text)
+                    if appid_match and name_match:
+                        games[_normalize_game_name(name_match.group(1))] = int(
+                            appid_match.group(1)
+                        )
+                except Exception:
+                    pass
+        return games
+
+    def get_local_appid(game_name: str) -> int | None:
+        return load_installed_games().get(_normalize_game_name(game_name))
 
     def show_game_popup(game_name: str) -> None:
-        appid = get_steam_appid(game_name)
+        appid = get_local_appid(game_name)
+        installed = appid is not None
+        if not installed:
+            appid = get_steam_appid(game_name)
         if not appid:
             messagebox.showerror("Steam", tr("steam_not_found"))
             return
-        installed = is_steam_game_installed(appid)
         dlg = tk.Toplevel(root)
         apply_style(dlg)
         dlg.title("Steam")
@@ -362,7 +379,10 @@ def start_app() -> None:
 
     def build_activity_caches() -> None:
         """Cache weighted activity lists for quick toggle switches."""
+        discover_steam_libraries.cache_clear()
+        load_installed_games.cache_clear()
         discover_steam_libraries()
+        load_installed_games()
         def filter_no_games(item):
             _, label, is_sub, _ = item
             return not (is_sub and label.startswith(tr("steam_hobby_name") + " + "))
@@ -372,12 +392,13 @@ def start_app() -> None:
             if not (is_sub and label.startswith(tr("steam_hobby_name") + " + ")):
                 return True
             game_name = label.split(" + ", 1)[1]
-            appid = get_steam_appid(game_name)
-            return appid is not None and is_steam_game_installed(appid)
+            return get_local_appid(game_name) is not None
 
         activity_lists["all"] = use_cases.build_weighted_items()
         activity_lists["no_games"] = use_cases.build_weighted_items(filter_no_games)
         activity_lists["installed"] = use_cases.build_weighted_items(filter_installed)
+        if refresh_probabilities:
+            refresh_probabilities()
 
     build_activity_caches()
 
@@ -934,6 +955,7 @@ def start_app() -> None:
         ):
             use_cases.delete_hobby(hobby_id)
             refresh_listbox()
+            build_activity_caches()
             messagebox.showinfo(tr("deleted"), tr("hobby_deleted").format(name=hobby_name))
 
     def open_edit_hobby_window(hobby_id, hobby_name):
@@ -969,6 +991,7 @@ def start_app() -> None:
                     if new_name and new_name.strip() != current_name:
                         use_cases.update_subitem(subitem_id, new_name.strip())
                         refresh_items()
+                        build_activity_caches()
 
                 ttk.Button(
                     row,
@@ -986,6 +1009,7 @@ def start_app() -> None:
             ):
                 use_cases.delete_subitem(item_id)
                 refresh_items()
+                build_activity_caches()
 
         def add_subitem():
             new_item = SimpleEntryDialog.ask(
@@ -996,6 +1020,7 @@ def start_app() -> None:
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
                 refresh_items()
+                build_activity_caches()
 
         ttk.Button(
             edit_window, text=tr("add_subitem_btn"), command=add_subitem
@@ -1019,6 +1044,7 @@ def start_app() -> None:
                     title=tr("another_title"),
                     prompt=tr("another_prompt"),
                 )
+            build_activity_caches()
             add_window.destroy()
             refresh_listbox()
 
