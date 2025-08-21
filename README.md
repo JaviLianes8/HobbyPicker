@@ -1,5 +1,3 @@
-<img src="https://via.placeholder.com/100" alt="HobbyPicker icon" align="right" />
-
 # HobbyPicker 🎯
 
 Aplicación de escritorio escrita en **Python** que te sugiere actividades o hobbies de forma aleatoria según tus preferencias. Todo el proyecto sigue una aproximación de **Clean Architecture**, separando responsabilidades por capas.
@@ -11,6 +9,7 @@ Aplicación de escritorio escrita en **Python** que te sugiere actividades o hob
 - Instalación automática de dependencias al ejecutar la aplicación.
 - Comprobación opcional de actualizaciones desde `origin/main` antes de abrir la interfaz.
 - Animaciones tipo "loot box" y efecto de confeti al elegir un hobby.
+- Estética renovada con tema claro/oscuro y encabezado profesional.
 
 ## Estructura del proyecto
 

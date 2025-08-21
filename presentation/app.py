@@ -2,6 +2,8 @@ import random
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
+from presentation.assets.icon_data import ICON_PNG
+
 from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color
 from presentation.utils.window_utils import WindowUtils
@@ -17,6 +19,26 @@ def start_app() -> None:
     root.minsize(1240, 600)
 
     apply_style(root, "system")
+
+    # --- App icon and header ---
+    try:
+        logo = tk.PhotoImage(data=ICON_PNG)
+        root.iconphoto(True, logo)
+    except Exception:
+        logo = None  # icon is optional
+
+    header = ttk.Frame(root, style="Surface.TFrame")
+    header.pack(fill="x")
+    label_params = {
+        "text": "HobbyPicker",
+        "padding": (10, 10),
+        "style": "Title.Surface.TLabel",
+    }
+    if logo:
+        label_params.update({"image": logo, "compound": "left"})
+    ttk.Label(header, **label_params).pack(side="left")
+    root.logo = logo  # prevent garbage collection
+
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
     animation_canvas = None  # zona de animación para las sugerencias

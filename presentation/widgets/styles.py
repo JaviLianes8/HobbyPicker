@@ -48,26 +48,30 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         theme = detect_system_theme()
     _CURRENT_THEME = theme
 
+    # --- Color palette ---
+    # Adopt a calmer palette inspired by modern design systems for a more
+    # professional look.  Both light and dark themes share the same accent color
+    # for consistent branding.
     if theme == "dark":
         palette = {
-            "primary": "#0A84FF",
-            "primary_hover": "#0063B1",
-            "background": "#1E1E1E",
-            "surface": "#2C2C2C",
-            "light": "#3A3A3A",
-            "text": "#FFFFFF",
-            "subtle": "#CCCCCC",
+            "primary": "#2F80ED",  # accent blue
+            "primary_hover": "#1C6DD0",
+            "background": "#121212",
+            "surface": "#1E1E1E",
+            "light": "#2A2A2A",
+            "text": "#E0E0E0",
+            "subtle": "#B0BEC5",
             "contrast": "#FFFFFF",
         }
     else:  # light theme
         palette = {
-            "primary": "#0078D4",
-            "primary_hover": "#0063B1",
-            "background": "#F4F6F9",
+            "primary": "#2F80ED",  # accent blue
+            "primary_hover": "#1C6DD0",
+            "background": "#F5F7FA",
             "surface": "#FFFFFF",
-            "light": "#D1D9E0",
-            "text": "#1F2A36",
-            "subtle": "#6B7785",
+            "light": "#E0E0E0",
+            "text": "#2C3E50",
+            "subtle": "#7F8C8D",
             "contrast": "#000000",
         }
 
@@ -85,9 +89,11 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     subtle = palette["subtle"]
     contrast = palette["contrast"]
 
-    base_font = ("Helvetica", 11)
-    bold_font = ("Helvetica", 11, "bold")
-    large_font = ("Helvetica", 13, "bold")
+    # Use a system font that looks crisp on most platforms.  Segoe UI is present
+    # on Windows and falls back gracefully elsewhere.
+    base_font = ("Segoe UI", 11)
+    bold_font = ("Segoe UI", 11, "bold")
+    large_font = ("Segoe UI", 13, "bold")
 
     style.configure(".", background=background, foreground=text, font=base_font)
     style.configure("TFrame", background=background)
@@ -117,8 +123,17 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         font=large_font,
         foreground=text,
     )
-    style.configure("TEntry", relief="flat", padding=6, foreground="black")
-    style.map("TEntry", foreground=[("focus", "black")])
+    # Title labels are used for the global header
+    title_font = ("Segoe UI", 16, "bold")
+    style.configure("Title.TLabel", font=title_font, background=background, foreground=text)
+    style.configure(
+        "Title.Surface.TLabel",
+        font=title_font,
+        background=surface,
+        foreground=text,
+    )
+    style.configure("TEntry", relief="flat", padding=6, foreground=text)
+    style.map("TEntry", foreground=[("focus", contrast)])
 
     style.configure("TNotebook", background=background, padding=10)
     style.configure(
