@@ -212,12 +212,21 @@ def start_app() -> None:
             url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
             data = requests.get(url, timeout=10).content
             root_xml = ET.fromstring(data)
-            games = [g.findtext("name") for g in root_xml.findall("./games/game") if g.findtext("name")]
+            games = [
+                g.findtext("name")
+                for g in root_xml.findall("./games/game")
+                if g.findtext("name")
+            ]
+            games = list(dict.fromkeys(games))  # eliminate duplicates while preserving order
             if not games:
                 raise ValueError
             hobby_id = use_cases.create_hobby(tr("steam_hobby_name"))
-            existing = {s[2] for s in use_cases.get_subitems_for_hobby(hobby_id)}
-            new_games = [g for g in games if g not in existing]
+            all_existing = {
+                s[2]
+                for hid, _ in use_cases.get_all_hobbies()
+                for s in use_cases.get_subitems_for_hobby(hid)
+            }
+            new_games = [g for g in games if g not in all_existing]
             for name in new_games:
                 use_cases.add_subitem_to_hobby(hobby_id, name)
             refresh_listbox()
