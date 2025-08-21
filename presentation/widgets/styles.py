@@ -132,7 +132,15 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         background=surface,
         foreground=text,
     )
-    style.configure("TEntry", relief="flat", padding=6, foreground=text)
+    style.configure(
+        "TEntry",
+        relief="flat",
+        padding=6,
+        foreground=text,
+        fieldbackground=surface,
+        background=surface,
+        insertcolor=contrast,
+    )
     style.map("TEntry", foreground=[("focus", contrast)])
 
     style.configure("TNotebook", background=background, padding=10)

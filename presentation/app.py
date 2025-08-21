@@ -315,6 +315,9 @@ def start_app() -> None:
             if table_frame is not None:
                 table_frame.grid()
             button_container.pack(side="bottom", fill="x", pady=20)
+        overlay_buttons.clear()
+        suggest_btn.state(["!disabled"])
+        accept_btn.state(["!disabled"])
         suggestion_label.config(text=tr("prompt"))
         suggestion_label.pack(pady=20, expand=True)
         final_timeout_id = None
@@ -396,6 +399,10 @@ def start_app() -> None:
 
     def suggest():
         nonlocal final_canvas, final_timeout_id
+        for btn, _ in overlay_buttons:
+            btn.state(["disabled"])
+        suggest_btn.state(["disabled"])
+        accept_btn.state(["disabled"])
         if final_timeout_id is not None:
             root.after_cancel(final_timeout_id)
             final_timeout_id = None
@@ -481,7 +488,11 @@ def start_app() -> None:
         def finish():
             animation_canvas.pack_forget()
             show_final_activity(tr("what_about").format(final_text))
-
+            # permitir únicamente el botón de "me gusta"
+            for btn, key in overlay_buttons:
+                if key == "like_overlay":
+                    btn.state(["!disabled"])
+        
         roll()
 
     def accept():
@@ -506,6 +517,9 @@ def start_app() -> None:
                 if table_frame is not None:
                     table_frame.grid()
                 button_container.pack(side="bottom", fill="x", pady=20)
+            overlay_buttons.clear()
+            suggest_btn.state(["!disabled"])
+            accept_btn.state(["!disabled"])
             refresh_probabilities()
 
     def make_overlay_buttons(parent):
@@ -518,6 +532,7 @@ def start_app() -> None:
         )
         btn1.pack(side="left", padx=8, pady=10)
         add_button_hover(btn1)
+        btn1.state(["disabled"])  # deshabilitado mientras dura la animación
         overlay_buttons.append((btn1, "another_button"))
         btn2 = ttk.Button(
             overlay, text=tr("like_overlay"), command=accept, style="Big.TButton", width=20
@@ -642,8 +657,8 @@ def start_app() -> None:
         edit_window = tk.Toplevel()
         apply_style(edit_window)
         edit_window.title(tr("edit_hobby_title").format(name=hobby_name))
-        WindowUtils.center_window(edit_window, 400, 600)
-        edit_window.minsize(400, 600)
+        WindowUtils.center_window(edit_window, 600, 600)
+        edit_window.minsize(600, 600)
 
         ttk.Label(edit_window, text=tr("subitems")).pack(pady=5)
         items_frame = ttk.Frame(edit_window, style="Surface.TFrame")
