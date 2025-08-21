@@ -112,8 +112,8 @@ def start_app() -> None:
 
     animation_canvas = tk.Canvas(
         content_frame,
-        width=540,
-        height=80,
+        width=1080,
+        height=160,
         bg=get_color("surface"),
         highlightthickness=0,
     )
@@ -215,7 +215,7 @@ def start_app() -> None:
         options += [final_text, ""]
 
         animation_canvas.delete("all")
-        box_w, box_h = 180, 60
+        box_w, box_h = 360, 120
         for i, text in enumerate(options):
             x = i * box_w
             animation_canvas.create_rectangle(
@@ -245,7 +245,7 @@ def start_app() -> None:
         )
 
         suggestion_label.pack_forget()
-        animation_canvas.pack(pady=(60, 40))
+        animation_canvas.pack(pady=(60, 40), before=button_container)
 
         total_shift = (len(options) - 3) * box_w
 
@@ -287,7 +287,7 @@ def start_app() -> None:
             refresh_probabilities()
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
-    button_container.pack(pady=(20, 40))
+    button_container.pack(side="bottom", fill="x", pady=(20, 40))
 
     ttk.Button(
         button_container,
