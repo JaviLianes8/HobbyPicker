@@ -52,3 +52,6 @@ def check_and_launch():
         print("✅ Ya estás en la última versión.")
         from presentation.app import start_app
         start_app()
+
+if __name__ == "__main__":
+    check_and_launch()
