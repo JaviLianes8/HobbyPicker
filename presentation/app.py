@@ -112,8 +112,8 @@ def start_app() -> None:
 
     animation_canvas = tk.Canvas(
         content_frame,
-        width=1080,
-        height=160,
+        width=1620,
+        height=220,
         bg=get_color("surface"),
         highlightthickness=0,
     )
@@ -215,7 +215,7 @@ def start_app() -> None:
         options += [final_text, ""]
 
         animation_canvas.delete("all")
-        box_w, box_h = 360, 120
+        box_w, box_h = 540, 180
         for i, text in enumerate(options):
             x = i * box_w
             animation_canvas.create_rectangle(
