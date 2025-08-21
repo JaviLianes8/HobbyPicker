@@ -49,7 +49,7 @@ def start_app() -> None:
     theme_var = tk.StringVar(value=settings["theme"])
 
     include_games_var = tk.BooleanVar(value=True)
-    installed_only_var = tk.BooleanVar(value=False)
+    games_only_var = tk.BooleanVar(value=False)
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -111,11 +111,11 @@ def start_app() -> None:
             "steam_import_error": "No se pudo importar los juegos.",
             "steam_hobby_name": "Jugar",
             "steam_action_prompt": "¿Qué quieres hacer con '{name}'?",
-            "steam_play": "Jugar juego",
-            "steam_install": "Instalar juego",
+            "steam_play": "Jugar en Steam",
+            "steam_install": "Instalar en Steam",
             "steam_not_found": "No se encontró el juego en Steam.",
             "include_games": "Incluir juegos",
-            "only_installed": "Solo juegos instalados",
+            "games_only": "Solo juegos",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -164,11 +164,11 @@ def start_app() -> None:
             "steam_import_error": "Could not import games.",
             "steam_hobby_name": "Play",
             "steam_action_prompt": "What do you want to do with '{name}'?",
-            "steam_play": "Play game",
-            "steam_install": "Install game",
+            "steam_play": "Play on Steam",
+            "steam_install": "Install on Steam",
             "steam_not_found": "Could not find the game on Steam.",
             "include_games": "Include games",
-            "only_installed": "Installed only",
+            "games_only": "Games only",
         },
     }
 
@@ -395,16 +395,13 @@ def start_app() -> None:
             _, label, is_sub, _ = item
             return not (is_sub and is_steam_game_label(label))
 
-        def filter_installed(item):
-            _, label, is_sub, _ = item
-            if not (is_sub and is_steam_game_label(label)):
-                return True
-            game_name = label.split(" + ", 1)[1]
-            return get_local_appid(game_name) is not None
-
         activity_lists["all"] = use_cases.build_weighted_items()
         activity_lists["no_games"] = use_cases.build_weighted_items(filter_no_games)
-        activity_lists["installed"] = use_cases.build_weighted_items(filter_installed)
+        def filter_games(item):
+            _, label, is_sub, _ = item
+            return is_sub and is_steam_game_label(label)
+
+        activity_lists["games"] = use_cases.build_weighted_items(filter_games)
         if refresh_probabilities:
             refresh_probabilities()
 
@@ -413,8 +410,8 @@ def start_app() -> None:
     def current_items_weights():
         if not include_games_var.get():
             return activity_lists["no_games"]
-        if installed_only_var.get():
-            return activity_lists["installed"]
+        if games_only_var.get():
+            return activity_lists["games"]
         return activity_lists["all"]
 
     canvas = None  # se asigna más tarde
@@ -425,7 +422,7 @@ def start_app() -> None:
     overlay_buttons = []  # referencias a botones del overlay
     final_timeout_id = None
     games_check = None  # toggle de incluir juegos
-    installed_check = None  # toggle de solo instalados
+    games_only_check = None  # toggle de solo juegos
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
@@ -486,8 +483,8 @@ def start_app() -> None:
         rebuild_menus()
         if games_check is not None:
             games_check.config(text=tr("include_games"))
-        if installed_check is not None:
-            installed_check.config(text=tr("only_installed"))
+        if games_only_check is not None:
+            games_only_check.config(text=tr("games_only"))
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -557,14 +554,16 @@ def start_app() -> None:
     refresh_probabilities()
 
     def on_toggle_update():
-        nonlocal installed_check
+        nonlocal games_only_check
+        if games_only_var.get():
+            include_games_var.set(True)
         if not include_games_var.get():
-            installed_only_var.set(False)
-            if installed_check is not None:
-                installed_check.state(["disabled"])
+            games_only_var.set(False)
+            if games_only_check is not None:
+                games_only_check.state(["disabled"])
         else:
-            if installed_check is not None:
-                installed_check.state(["!disabled"])
+            if games_only_check is not None:
+                games_only_check.state(["!disabled"])
         refresh_probabilities()
 
     suggestion_label = ttk.Label(
@@ -857,13 +856,13 @@ def start_app() -> None:
     )
     games_check.pack(side="left", padx=5)
 
-    installed_check = ttk.Checkbutton(
+    games_only_check = ttk.Checkbutton(
         toggle_frame,
-        text=tr("only_installed"),
-        variable=installed_only_var,
+        text=tr("games_only"),
+        variable=games_only_var,
         command=on_toggle_update,
     )
-    installed_check.pack(side="left", padx=5)
+    games_only_check.pack(side="left", padx=5)
 
     on_toggle_update()
 
