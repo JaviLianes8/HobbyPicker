@@ -23,9 +23,7 @@ def start_app() -> None:
     config_path = Path.home() / ".hobbypicker.json"
 
     def load_settings() -> dict[str, str]:
-        sys_lang = locale.getdefaultlocale()[0] or "en"
-        lang = "es" if sys_lang.lower().startswith("es") else "en"
-        data = {"language": lang, "theme": "system"}
+        data = {"language": "system", "theme": "system"}
         try:
             if config_path.exists():
                 with config_path.open("r", encoding="utf-8") as fh:
@@ -66,6 +64,9 @@ def start_app() -> None:
             "theme_system": "Sistema",
             "theme_light": "Claro",
             "theme_dark": "Oscuro",
+            "lang_system": "Sistema",
+            "lang_spanish": "Español",
+            "lang_english": "Inglés",
             "add_hobby": "➕ Añadir hobby",
             "col_activity": "Actividad",
             "col_percent": "%",
@@ -106,6 +107,9 @@ def start_app() -> None:
             "theme_system": "System",
             "theme_light": "Light",
             "theme_dark": "Dark",
+            "lang_system": "System",
+            "lang_spanish": "Spanish",
+            "lang_english": "English",
             "add_hobby": "➕ Add hobby",
             "col_activity": "Activity",
             "col_percent": "%",
@@ -133,8 +137,15 @@ def start_app() -> None:
         },
     }
 
+    def get_system_language() -> str:
+        sys_lang = locale.getdefaultlocale()[0] or "en"
+        return "es" if sys_lang.lower().startswith("es") else "en"
+
+    def get_effective_language() -> str:
+        return lang_var.get() if lang_var.get() != "system" else get_system_language()
+
     def tr(key: str) -> str:
-        return LANG_TEXT[lang_var.get()][key]
+        return LANG_TEXT[get_effective_language()][key]
 
     # --- Encabezado ---
     header = ttk.Frame(root, style="Surface.TFrame")
@@ -193,14 +204,11 @@ def start_app() -> None:
         menubar.add_cascade(label=tr("menu_theme"), menu=theme_menu)
 
         language_menu = tk.Menu(menubar, tearoff=0)
-        language_menu.add_radiobutton(
-            label="Español", value="es", variable=lang_var,
-            command=lambda: change_language("es")
-        )
-        language_menu.add_radiobutton(
-            label="English", value="en", variable=lang_var,
-            command=lambda: change_language("en")
-        )
+        for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
+            language_menu.add_radiobutton(
+                label=tr(key), value=code, variable=lang_var,
+                command=lambda c=code: change_language(c)
+            )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
         root.config(menu=menubar)
 
@@ -265,8 +273,12 @@ def start_app() -> None:
     def refresh_probabilities():
         for row in prob_table.get_children():
             prob_table.delete(row)
-        prob_table.tag_configure("even", background=get_color("surface"))
-        prob_table.tag_configure("odd", background=get_color("light"))
+        prob_table.tag_configure(
+            "even", background=get_color("surface"), foreground=get_color("text")
+        )
+        prob_table.tag_configure(
+            "odd", background=get_color("light"), foreground=get_color("text")
+        )
         for i, (name, prob) in enumerate(use_cases.get_activity_probabilities()):
             tag = "even" if i % 2 == 0 else "odd"
             prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
