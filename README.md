@@ -9,7 +9,8 @@ Aplicación de escritorio escrita en **Python** que te sugiere actividades o hob
 - Instalación automática de dependencias al ejecutar la aplicación.
 - Comprobación opcional de actualizaciones desde `origin/main` antes de abrir la interfaz.
 - Animaciones tipo "loot box" y efecto de confeti al elegir un hobby.
-- Estética renovada con tema claro/oscuro y encabezado profesional.
+- Botones con animación de *hover* y textos centrados para una experiencia más fluida.
+- Estética renovada con mayor contraste, tema claro/oscuro y opción de idioma español/inglés.
 
 ## Estructura del proyecto
 

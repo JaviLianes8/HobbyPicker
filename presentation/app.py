@@ -2,10 +2,9 @@ import random
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
-from presentation.assets.icon_data import ICON_PNG
 
 from domain import use_cases
-from presentation.widgets.styles import apply_style, get_color
+from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 
@@ -20,41 +19,75 @@ def start_app() -> None:
 
     apply_style(root, "system")
 
-    # --- App icon and header ---
-    try:
-        logo = tk.PhotoImage(data=ICON_PNG)
-        root.iconphoto(True, logo)
-    except Exception:
-        logo = None  # icon is optional
+    # --- Soporte de idiomas ---
+    lang_var = tk.StringVar(value="es")
+    LANG_TEXT = {
+        "es": {
+            "tab_today": "¿Qué hago hoy?",
+            "tab_config": "⚙️ Configurar hobbies",
+            "prompt": "¿Qué tal?",
+            "suggest_button": "🎲 Sugerir hobby",
+            "accept_button": "✅ ¡Me gusta!",
+            "another_button": "🎲 Otra sugerencia",
+            "like_overlay": "✅ ¡Me gusta!",
+            "no_hobbies": "No hay hobbies configurados. Ve a la pestaña de configuración.",
+            "what_about": "¿Qué tal hacer: {}?",
+            "menu_theme": "Tema",
+            "menu_language": "Idioma",
+            "theme_system": "Sistema",
+            "theme_light": "Claro",
+            "theme_dark": "Oscuro",
+            "add_hobby": "➕ Añadir hobby",
+        },
+        "en": {
+            "tab_today": "What should I do today?",
+            "tab_config": "⚙️ Configure hobbies",
+            "prompt": "How about?",
+            "suggest_button": "🎲 Suggest hobby",
+            "accept_button": "✅ I like it!",
+            "another_button": "🎲 Another suggestion",
+            "like_overlay": "✅ I like it!",
+            "no_hobbies": "No hobbies configured. Go to the settings tab.",
+            "what_about": "How about: {}?",
+            "menu_theme": "Theme",
+            "menu_language": "Language",
+            "theme_system": "System",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "add_hobby": "➕ Add hobby",
+        },
+    }
 
+    def tr(key: str) -> str:
+        return LANG_TEXT[lang_var.get()][key]
+
+    # --- Encabezado ---
     header = ttk.Frame(root, style="Surface.TFrame")
     header.pack(fill="x")
-    label_params = {
-        "text": "HobbyPicker",
-        "padding": (10, 10),
-        "style": "Title.Surface.TLabel",
-    }
-    if logo:
-        label_params.update({"image": logo, "compound": "left"})
-    ttk.Label(header, **label_params).pack(side="left")
-    root.logo = logo  # prevent garbage collection
+    ttk.Label(
+        header,
+        text="HobbyPicker",
+        padding=(10, 10),
+        style="Title.Surface.TLabel",
+    ).pack(side="left")
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
     animation_canvas = None  # zona de animación para las sugerencias
     final_canvas = None  # capa final a pantalla completa
     button_container = None  # contenedor de botones inferior
+    overlay_buttons = []  # referencias a botones del overlay
+    final_timeout_id = None
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
 
-    # --- Menú Tema (desplegable) ---
-    theme_options = {"Sistema": "system", "Claro": "light", "Oscuro": "dark"}
-    theme_var = tk.StringVar(value="Sistema")
+    # --- Menús de tema e idioma ---
+    theme_var = tk.StringVar(value="system")
 
     def change_theme_to(value: str) -> None:
-        apply_style(root, theme_options[value])
+        apply_style(root, value)
         if canvas is not None:
             canvas.configure(bg=get_color("surface"))
         if animation_canvas is not None:
@@ -64,21 +97,56 @@ def start_app() -> None:
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
 
     menubar = tk.Menu(root)
-    theme_menu = tk.Menu(menubar, tearoff=0)
-    for label in theme_options.keys():
-        theme_menu.add_radiobutton(
-            label=label,
-            variable=theme_var,
-            value=label,
-            command=lambda lbl=label: change_theme_to(lbl),
+
+    def change_language(code: str) -> None:
+        lang_var.set(code)
+        update_texts()
+
+    def rebuild_menus() -> None:
+        menubar.delete(0, "end")
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        for key in ("system", "light", "dark"):
+            theme_menu.add_radiobutton(
+                label=tr(f"theme_{key}"),
+                variable=theme_var,
+                value=key,
+                command=lambda k=key: change_theme_to(k),
+            )
+        menubar.add_cascade(label=tr("menu_theme"), menu=theme_menu)
+
+        language_menu = tk.Menu(menubar, tearoff=0)
+        language_menu.add_radiobutton(
+            label="Español", value="es", variable=lang_var,
+            command=lambda: change_language("es")
         )
-    menubar.add_cascade(label="Tema", menu=theme_menu)
-    root.config(menu=menubar)
-    change_theme_to(theme_var.get())  # tema inicial
+        language_menu.add_radiobutton(
+            label="English", value="en", variable=lang_var,
+            command=lambda: change_language("en")
+        )
+        menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+        root.config(menu=menubar)
+
+    def update_texts() -> None:
+        notebook.tab(0, text=tr("tab_today"))
+        notebook.tab(1, text=tr("tab_config"))
+        suggestion_label.config(text=tr("prompt"))
+        suggest_btn.config(text=tr("suggest_button"))
+        accept_btn.config(text=tr("accept_button"))
+        add_hobby_btn.config(text=tr("add_hobby"))
+        rebuild_menus()
+        if final_canvas is not None and overlay_buttons:
+            final_canvas.itemconfigure(
+                "final_text", text=tr("what_about").format(current_activity["name"])
+            )
+            for btn, key in overlay_buttons:
+                btn.config(text=tr(key))
+
+    rebuild_menus()
+    change_theme_to(theme_var.get())
 
     # --- Pestaña: ¿Qué hago hoy? ---
     frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
-    notebook.add(frame_suggest, text="¿Qué hago hoy?")
+    notebook.add(frame_suggest, text=tr("tab_today"))
 
     frame_suggest.columnconfigure(0, weight=1)
     frame_suggest.columnconfigure(1, weight=0)
@@ -124,13 +192,13 @@ def start_app() -> None:
 
     suggestion_label = ttk.Label(
         content_frame,
-        text="Pulsa el botón para sugerencia",
+        text=tr("prompt"),
         font=("Segoe UI", 28, "bold"),
         wraplength=500,
         justify="center",
         style="Surface.TLabel",
     )
-    suggestion_label.pack(pady=(60, 40), expand=True)
+    suggestion_label.pack(pady=20, expand=True)
 
     animation_canvas = tk.Canvas(
         content_frame,
@@ -142,8 +210,25 @@ def start_app() -> None:
 
     current_activity = {"id": None, "name": None, "is_subitem": False}
 
+    def revert_to_idle() -> None:
+        nonlocal final_canvas, final_timeout_id
+        if final_canvas is not None:
+            final_canvas.destroy()
+            final_canvas = None
+            if separator is not None:
+                separator.grid()
+            if table_frame is not None:
+                table_frame.grid()
+            button_container.pack(side="bottom", fill="x", pady=20)
+        suggestion_label.config(text=tr("prompt"))
+        suggestion_label.pack(pady=20, expand=True)
+        final_timeout_id = None
+
     def show_final_activity(text: str) -> None:
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
+        if final_timeout_id is not None:
+            root.after_cancel(final_timeout_id)
+            final_timeout_id = None
         if final_canvas is not None:
             final_canvas.destroy()
 
@@ -212,9 +297,13 @@ def start_app() -> None:
 
         zoom()
         launch_confetti()
+        final_timeout_id = root.after(8000, revert_to_idle)
 
     def suggest():
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
+        if final_timeout_id is not None:
+            root.after_cancel(final_timeout_id)
+            final_timeout_id = None
         if final_canvas is not None:
             final_canvas.destroy()
             final_canvas = None
@@ -222,13 +311,13 @@ def start_app() -> None:
                 separator.grid()
             if table_frame is not None:
                 table_frame.grid()
-            button_container.pack(side="bottom", fill="x", pady=(20, 40))
+            button_container.pack(side="bottom", fill="x", pady=20)
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
             suggestion_label.config(
-                text="No hay hobbies configurados. Ve a la pestaña de configuración."
+                text=tr("no_hobbies")
             )
-            suggestion_label.pack(pady=(60, 40), expand=True)
+            suggestion_label.pack(pady=20, expand=True)
             return
 
         final_id, final_text, is_sub = result
@@ -277,7 +366,7 @@ def start_app() -> None:
         )
 
         suggestion_label.pack_forget()
-        animation_canvas.pack(pady=(60, 40), before=button_container)
+        animation_canvas.pack(pady=20, before=button_container)
 
         total_shift = (len(options) - 3) * box_w
 
@@ -296,12 +385,12 @@ def start_app() -> None:
 
         def finish():
             animation_canvas.pack_forget()
-            show_final_activity(f"¿Qué tal hacer: {final_text}?")
+            show_final_activity(tr("what_about").format(final_text))
 
         roll()
 
     def accept():
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
         if current_activity["id"]:
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
@@ -309,8 +398,11 @@ def start_app() -> None:
             current_activity["id"] = None
             current_activity["name"] = None
             current_activity["is_subitem"] = False
-            suggestion_label.config(text="Pulsa el botón para sugerencia")
-            suggestion_label.pack(pady=(60, 40), expand=True)
+            suggestion_label.config(text=tr("prompt"))
+            suggestion_label.pack(pady=20, expand=True)
+            if final_timeout_id is not None:
+                root.after_cancel(final_timeout_id)
+                final_timeout_id = None
             if final_canvas is not None:
                 final_canvas.destroy()
                 final_canvas = None
@@ -318,38 +410,50 @@ def start_app() -> None:
                     separator.grid()
                 if table_frame is not None:
                     table_frame.grid()
-                button_container.pack(side="bottom", fill="x", pady=(20, 40))
+                button_container.pack(side="bottom", fill="x", pady=20)
             refresh_probabilities()
 
     def make_overlay_buttons(parent):
         """Botonera específica para la capa final (parent debe ser final_canvas)."""
+        nonlocal overlay_buttons
+        overlay_buttons = []
         overlay = ttk.Frame(parent, style="Surface.TFrame")
-        ttk.Button(
-            overlay, text="🎲 Otra sugerencia", command=suggest, style="Big.TButton", width=20
-        ).pack(side="left", padx=8, pady=10)
-        ttk.Button(
-            overlay, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20
-        ).pack(side="left", padx=8, pady=10)
+        btn1 = ttk.Button(
+            overlay, text=tr("another_button"), command=suggest, style="Big.TButton", width=20
+        )
+        btn1.pack(side="left", padx=8, pady=10)
+        add_button_hover(btn1)
+        overlay_buttons.append((btn1, "another_button"))
+        btn2 = ttk.Button(
+            overlay, text=tr("like_overlay"), command=accept, style="Big.TButton", width=20
+        )
+        btn2.pack(side="left", padx=8, pady=10)
+        add_button_hover(btn2)
+        overlay_buttons.append((btn2, "like_overlay"))
         return overlay
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
-    button_container.pack(side="bottom", fill="x", pady=(20, 40))
+    button_container.pack(side="bottom", fill="x", pady=20)
 
-    ttk.Button(
+    suggest_btn = ttk.Button(
         button_container,
-        text="🎲 Sugerir hobby",
+        text=tr("suggest_button"),
         command=suggest,
         style="Big.TButton",
         width=20,
-    ).pack(pady=10)
+    )
+    suggest_btn.pack(pady=10)
+    add_button_hover(suggest_btn)
 
-    ttk.Button(
+    accept_btn = ttk.Button(
         button_container,
-        text="✅ ¡Me gusta!",
+        text=tr("accept_button"),
         command=accept,
         style="Big.TButton",
         width=20,
-    ).pack(pady=10)
+    )
+    accept_btn.pack(pady=10)
+    add_button_hover(accept_btn)
 
     def on_tab_change(event):
         if notebook.index("current") == 0:
@@ -359,7 +463,7 @@ def start_app() -> None:
 
     # --- Pestaña: Configurar hobbies ---
     frame_config = ttk.Frame(notebook, style="Surface.TFrame")
-    notebook.add(frame_config, text="⚙️ Configurar hobbies")
+    notebook.add(frame_config, text=tr("tab_config"))
 
     main_config_layout = ttk.Frame(frame_config, style="Surface.TFrame")
     main_config_layout.pack(fill="both", expand=True)
@@ -390,9 +494,12 @@ def start_app() -> None:
 
     sticky_bottom = ttk.Frame(main_config_layout, style="Surface.TFrame")
     sticky_bottom.pack(fill="x", side="bottom", pady=5)
-    ttk.Button(
-        sticky_bottom, text="➕ Añadir hobby", command=lambda: open_add_hobby_window()
-    ).pack()
+    add_hobby_btn = ttk.Button(
+        sticky_bottom, text=tr("add_hobby"), command=lambda: open_add_hobby_window()
+    )
+    add_hobby_btn.pack()
+
+    update_texts()
 
     hobbies_container = scrollable_frame
 

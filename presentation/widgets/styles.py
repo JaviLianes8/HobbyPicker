@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tkinter import ttk
+from tkinter import ttk, font
 
 try:  # Optional dependency; theme detection falls back gracefully
     import darkdetect
@@ -54,24 +54,24 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     # for consistent branding.
     if theme == "dark":
         palette = {
-            "primary": "#2F80ED",  # accent blue
-            "primary_hover": "#1C6DD0",
-            "background": "#121212",
-            "surface": "#1E1E1E",
-            "light": "#2A2A2A",
-            "text": "#E0E0E0",
+            "primary": "#1E88E5",
+            "primary_hover": "#1565C0",
+            "background": "#0D0D0D",
+            "surface": "#1A1A1A",
+            "light": "#2E2E2E",
+            "text": "#F0F0F0",
             "subtle": "#B0BEC5",
             "contrast": "#FFFFFF",
         }
     else:  # light theme
         palette = {
-            "primary": "#2F80ED",  # accent blue
-            "primary_hover": "#1C6DD0",
-            "background": "#F5F7FA",
+            "primary": "#1E88E5",
+            "primary_hover": "#1565C0",
+            "background": "#E8EAED",
             "surface": "#FFFFFF",
-            "light": "#E0E0E0",
-            "text": "#2C3E50",
-            "subtle": "#7F8C8D",
+            "light": "#CFD8DC",
+            "text": "#1C1C1C",
+            "subtle": "#5F6A6A",
             "contrast": "#000000",
         }
 
@@ -214,3 +214,20 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         borderwidth=0,
     )
 
+
+def add_button_hover(button: ttk.Button) -> None:
+    """Apply a subtle hover animation to a ttk.Button."""
+    style_name = button.cget("style") or "TButton"
+    base_font = ttk.Style().lookup(style_name, "font")
+    f = font.nametofont(base_font)
+    hover_font = f.copy()
+    hover_font.configure(size=f.cget("size") + 1)
+
+    def on_enter(event):
+        button.configure(font=hover_font)
+
+    def on_leave(event):
+        button.configure(font=f)
+
+    button.bind("<Enter>", on_enter)
+    button.bind("<Leave>", on_leave)
