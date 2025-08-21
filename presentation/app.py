@@ -132,7 +132,7 @@ def start_app() -> None:
         else:
             final_canvas.place(x=0, y=0, relwidth=1, relheight=1)
         final_canvas.update_idletasks()
-        final_canvas.lift()
+        final_canvas.tkraise()
         if separator is not None:
             separator.grid_remove()
         if table_frame is not None:
@@ -151,13 +151,16 @@ def start_app() -> None:
             tags=("final_text",),
         )
 
+        max_size = int(min(final_canvas.winfo_width(), final_canvas.winfo_height()) * 0.25)
+
         def animate(y=-100, size=10):
             if y < cy:
                 final_canvas.coords(text_item, cx, y)
                 final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
-                final_canvas.after(20, lambda: animate(y + 20, min(size + 4, 110)))
+                final_canvas.after(20, lambda: animate(y + 20, min(size + 6, max_size)))
             else:
                 final_canvas.coords(text_item, cx, cy)
+                final_canvas.itemconfigure(text_item, font=("Segoe UI", max_size, "bold"))
 
         def launch_confetti():
             width = final_canvas.winfo_width()
@@ -227,7 +230,7 @@ def start_app() -> None:
         options += [final_text, ""]
 
         animation_canvas.delete("all")
-        box_scale = 1.5  # size multiplier for loot-box animation
+        box_scale = 3.0  # size multiplier for loot-box animation
         box_w, box_h = int(180 * box_scale), int(60 * box_scale)
         animation_canvas.config(width=box_w * 3, height=box_h)
         for i, text in enumerate(options):

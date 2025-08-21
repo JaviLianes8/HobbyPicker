@@ -10,7 +10,7 @@ Aplicación de escritorio escrita en **Python** que te sugiere actividades o hob
 - Persistencia ligera usando **SQLite**.
 - Instalación automática de dependencias al ejecutar la aplicación.
 - Comprobación opcional de actualizaciones desde `origin/main` antes de abrir la interfaz.
-- Animaciones tipo "loot box" con cajas de gran tamaño y revelación a pantalla completa: el hobby aparece con zoom, deslizándose al centro mientras cae confeti.
+- Animaciones tipo "loot box" con cajas enormes (x3) y revelación a pantalla completa: el hobby aparece con zoom, deslizándose al centro mientras cae confeti.
 
 ## Estructura del proyecto
 
