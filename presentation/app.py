@@ -124,29 +124,63 @@ def start_app() -> None:
         nonlocal final_canvas
         if final_canvas is not None:
             final_canvas.destroy()
+
+        # Capa a pantalla completa para texto y confeti
         final_canvas = tk.Canvas(
-            content_frame, bg=get_color("surface"), highlightthickness=0
+            frame_suggest, bg=get_color("surface"), highlightthickness=0
         )
-        final_canvas.pack(fill="both", expand=True, before=button_container)
+        final_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         final_canvas.update_idletasks()
+
         if separator is not None:
             separator.grid_remove()
         if table_frame is not None:
             table_frame.grid_remove()
+        button_container.pack_forget()
+
         cx = final_canvas.winfo_width() / 2
         cy = final_canvas.winfo_height() / 2
+        max_width = final_canvas.winfo_width() * 0.9
         text_item = final_canvas.create_text(
             cx,
             cy,
             text=text,
+            width=max_width,
             fill=get_color("text"),
             font=("Segoe UI", 10, "bold"),
             tags=("final_text",),
         )
 
+        button_window = final_canvas.create_window(
+            cx,
+            final_canvas.winfo_height() - 20,
+            window=button_container,
+            anchor="s",
+        )
+
+        def on_resize(event=None):
+            nonlocal max_width
+            max_width = final_canvas.winfo_width() * 0.9
+            final_canvas.itemconfigure(text_item, width=max_width)
+            final_canvas.coords(
+                text_item, final_canvas.winfo_width() / 2, final_canvas.winfo_height() / 2
+            )
+            final_canvas.coords(
+                button_window,
+                final_canvas.winfo_width() / 2,
+                final_canvas.winfo_height() - 20,
+            )
+
+        final_canvas.bind("<Configure>", on_resize)
+
         def zoom(size=10):
-            if size <= 110:
-                final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
+            final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
+            bbox = final_canvas.bbox(text_item)
+            if (
+                bbox[2] - bbox[0] < max_width
+                and bbox[3] - bbox[1] < final_canvas.winfo_height() * 0.8
+                and size < 110
+            ):
                 final_canvas.after(20, lambda: zoom(size + 4))
 
         def launch_confetti():
@@ -194,6 +228,7 @@ def start_app() -> None:
                 separator.grid()
             if table_frame is not None:
                 table_frame.grid()
+            button_container.pack(side="bottom", fill="x", pady=(20, 40))
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
             suggestion_label.config(
@@ -285,6 +320,7 @@ def start_app() -> None:
                     separator.grid()
                 if table_frame is not None:
                     table_frame.grid()
+                button_container.pack(side="bottom", fill="x", pady=(20, 40))
             refresh_probabilities()
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
