@@ -6,6 +6,7 @@ import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlencode, urlparse, parse_qs
 from pathlib import Path
+import xml.etree.ElementTree as ET
 import requests
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -101,9 +102,7 @@ def start_app() -> None:
             "save": "Guardar",
             "error": "Error",
             "need_title": "Debes introducir un título.",
-            "import_steam": "Importar juegos de Steam",
             "steam_import_confirm": "¿Importar juegos de Steam?",
-            "steam_key_prompt": "Introduce tu Steam API Key:",
             "steam_import_success": "Se importaron {count} juegos.",
             "steam_import_error": "No se pudo importar los juegos.",
             "steam_hobby_name": "Jugar",
@@ -150,9 +149,7 @@ def start_app() -> None:
             "save": "Save",
             "error": "Error",
             "need_title": "You must enter a title.",
-            "import_steam": "Import Steam games",
             "steam_import_confirm": "Import Steam games?",
-            "steam_key_prompt": "Enter your Steam API Key:",
             "steam_import_success": "Imported {count} games.",
             "steam_import_error": "Could not import games.",
             "steam_hobby_name": "Play",
@@ -211,16 +208,11 @@ def start_app() -> None:
         steam_id = login_steam_id()
         if not steam_id:
             return
-        api_key = SimpleEntryDialog.ask(root, tr("import_steam"), tr("steam_key_prompt"))
-        if not api_key:
-            return
         try:
-            url = (
-                "https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
-                f"?key={api_key}&steamid={steam_id}&include_appinfo=true&format=json"
-            )
-            data = requests.get(url, timeout=10).json()
-            games = [g["name"] for g in data.get("response", {}).get("games", [])]
+            url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
+            data = requests.get(url, timeout=10).content
+            root_xml = ET.fromstring(data)
+            games = [g.findtext("name") for g in root_xml.findall("./games/game") if g.findtext("name")]
             if not games:
                 raise ValueError
             hobby_id = use_cases.create_hobby(tr("steam_hobby_name"))
