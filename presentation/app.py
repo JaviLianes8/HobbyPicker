@@ -2,6 +2,7 @@ import json
 import locale
 import random
 from pathlib import Path
+import requests
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
@@ -10,6 +11,29 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+
+
+STEAM_ICON_BASE64 = (
+    "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"
+)
 
 
 def start_app() -> None:
@@ -37,6 +61,8 @@ def start_app() -> None:
 
     lang_var = tk.StringVar(value=settings["language"])
     theme_var = tk.StringVar(value=settings["theme"])
+
+    steam_icon = tk.PhotoImage(master=root, data=STEAM_ICON_BASE64)
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -93,6 +119,13 @@ def start_app() -> None:
             "save": "Guardar",
             "error": "Error",
             "need_title": "Debes introducir un título.",
+            "import_steam": "Importar juegos de Steam",
+            "steam_import_confirm": "¿Importar juegos de Steam?",
+            "steam_id_prompt": "Introduce tu SteamID64:",
+            "steam_key_prompt": "Introduce tu Steam API Key:",
+            "steam_import_success": "Se importaron {count} juegos.",
+            "steam_import_error": "No se pudo importar los juegos.",
+            "steam_hobby_name": "Jugar",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -136,6 +169,13 @@ def start_app() -> None:
             "save": "Save",
             "error": "Error",
             "need_title": "You must enter a title.",
+            "import_steam": "Import Steam games",
+            "steam_import_confirm": "Import Steam games?",
+            "steam_id_prompt": "Enter your SteamID64:",
+            "steam_key_prompt": "Enter your Steam API Key:",
+            "steam_import_success": "Imported {count} games.",
+            "steam_import_error": "Could not import games.",
+            "steam_hobby_name": "Play",
         },
     }
 
@@ -148,6 +188,36 @@ def start_app() -> None:
 
     def tr(key: str) -> str:
         return LANG_TEXT[get_effective_language()][key]
+
+    def import_steam_games() -> None:
+        if not messagebox.askyesno("Steam", tr("steam_import_confirm")):
+            return
+        steam_id = SimpleEntryDialog.ask(root, tr("import_steam"), tr("steam_id_prompt"))
+        if not steam_id:
+            return
+        api_key = SimpleEntryDialog.ask(root, tr("import_steam"), tr("steam_key_prompt"))
+        if not api_key:
+            return
+        try:
+            url = (
+                "https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
+                f"?key={api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+            )
+            data = requests.get(url, timeout=10).json()
+            games = [g["name"] for g in data.get("response", {}).get("games", [])]
+            if not games:
+                raise ValueError
+            hobby_id = use_cases.create_hobby(tr("steam_hobby_name"))
+            existing = {s[2] for s in use_cases.get_subitems_for_hobby(hobby_id)}
+            new_games = [g for g in games if g not in existing]
+            for name in new_games:
+                use_cases.add_subitem_to_hobby(hobby_id, name)
+            refresh_listbox()
+            if refresh_probabilities:
+                refresh_probabilities()
+            messagebox.showinfo("Steam", tr("steam_import_success").format(count=len(new_games)))
+        except Exception:
+            messagebox.showerror(tr("error"), tr("steam_import_error"))
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -202,6 +272,7 @@ def start_app() -> None:
                 command=lambda c=code: change_language(c)
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+        menubar.add_command(image=steam_icon, command=import_steam_games)
         root.config(menu=menubar)
 
     def update_texts() -> None:

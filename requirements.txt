@@ -1,2 +1,3 @@
 tk
 darkdetect
+requests
