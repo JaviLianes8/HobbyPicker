@@ -218,8 +218,16 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 def add_button_hover(button: ttk.Button) -> None:
     """Apply a subtle hover animation to a ttk.Button."""
     style_name = button.cget("style") or "TButton"
-    base_font = ttk.Style().lookup(style_name, "font")
-    f = font.nametofont(base_font)
+    base_font = ttk.Style().lookup(style_name, "font") or button.cget("font")
+
+    # ``font.nametofont`` only accepts named fonts.  On some platforms ttk styles
+    # store fonts as tuples, which would raise a ``TclError``.  Fall back to
+    # constructing a ``Font`` object manually in that case.
+    try:
+        f = font.nametofont(base_font)
+    except Exception:  # pragma: no cover - platform dependent
+        f = font.Font(font=base_font)
+
     hover_font = f.copy()
     hover_font.configure(size=f.cget("size") + 1)
 
