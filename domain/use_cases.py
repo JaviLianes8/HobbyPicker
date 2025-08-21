@@ -1,16 +1,24 @@
 import random
+from typing import Callable, Tuple
 from data.activity_dao import ActivityDAO
 
 dao = ActivityDAO()
 
 
-def _build_weighted_items():
-    """Return hobby items alongside their selection weights."""
+def _build_weighted_items(
+    filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
+):
+    """Return hobby items alongside their selection weights.
+
+    The optional *filter_func* receives tuples of
+    ``(item_id, label, is_subitem, accepted_count)`` and should return ``True``
+    to keep the item in the result.
+    """
     activities = dao.get_all_with_counts()
     if not activities:
         return [], []
 
-    temp_items = []
+    temp_items: list[Tuple[int, str, bool, int]] = []
     for hobby_id, name, act_count in activities:
         subitems = dao.get_subitems_by_activity(hobby_id)
         if subitems:
@@ -23,14 +31,18 @@ def _build_weighted_items():
     items: list[tuple[int, str, bool]] = []
     weights: list[int] = []
     for item_id, label, is_sub, count in temp_items:
+        if filter_func and not filter_func((item_id, label, is_sub, count)):
+            continue
         weight = max_count - count
         items.append((item_id, label, is_sub))
         weights.append(weight)
     return items, weights
 
 
-def get_weighted_random_valid_activity():
-    items, weights = _build_weighted_items()
+def get_weighted_random_valid_activity(
+    filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
+):
+    items, weights = _build_weighted_items(filter_func)
     if not items:
         return None
     return random.choices(items, weights=weights, k=1)[0]
@@ -63,8 +75,10 @@ def update_subitem(subitem_id, new_name):
     dao.update_subitem(subitem_id, new_name)
 
 
-def get_activity_probabilities():
-    items, weights = _build_weighted_items()
+def get_activity_probabilities(
+    filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
+):
+    items, weights = _build_weighted_items(filter_func)
     if not items:
         return []
 

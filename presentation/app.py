@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 import requests
 import tkinter as tk
 from tkinter import messagebox, ttk
-from functools import partial
+from functools import partial, lru_cache
 
 from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
@@ -47,6 +47,8 @@ def start_app() -> None:
     lang_var = tk.StringVar(value=settings["language"])
     theme_var = tk.StringVar(value=settings["theme"])
 
+    include_games_var = tk.BooleanVar(value=True)
+    installed_only_var = tk.BooleanVar(value=False)
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -111,6 +113,8 @@ def start_app() -> None:
             "steam_play": "Jugar juego",
             "steam_install": "Instalar juego",
             "steam_not_found": "No se encontró el juego en Steam.",
+            "include_games": "Incluir juegos",
+            "only_installed": "Solo juegos instalados",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -162,6 +166,8 @@ def start_app() -> None:
             "steam_play": "Play game",
             "steam_install": "Install game",
             "steam_not_found": "Could not find the game on Steam.",
+            "include_games": "Include games",
+            "only_installed": "Installed only",
         },
     }
 
@@ -245,6 +251,7 @@ def start_app() -> None:
         except Exception:
             messagebox.showerror(tr("error"), tr("steam_import_error"))
 
+    @lru_cache(maxsize=None)
     def get_steam_appid(game_name: str) -> int | None:
         try:
             resp = requests.get(
@@ -256,6 +263,7 @@ def start_app() -> None:
         except Exception:
             return None
 
+    @lru_cache(maxsize=None)
     def is_steam_game_installed(appid: int) -> bool:
         steam_paths = []
         if os.name == "nt":
@@ -285,10 +293,15 @@ def start_app() -> None:
         dlg = tk.Toplevel(root)
         apply_style(dlg)
         dlg.title("Steam")
-        WindowUtils.center_window(dlg, 300, 120)
+        dlg.transient(root)
+        dlg.grab_set()
+        WindowUtils.center_window(dlg, 300, 130)
         ttk.Label(
-            dlg, text=tr("steam_action_prompt").format(name=game_name)
-        ).pack(padx=20, pady=10)
+            dlg,
+            text=tr("steam_action_prompt").format(name=game_name),
+            justify="center",
+            anchor="center",
+        ).pack(padx=20, pady=15)
 
         def act() -> None:
             url = (
@@ -305,8 +318,20 @@ def start_app() -> None:
             command=act,
             width=20,
         )
-        btn.pack(pady=10)
+        btn.pack(pady=(0, 15))
         add_button_hover(btn)
+
+    def activity_filter(item):
+        _, label, is_sub, _ = item
+        is_game = is_sub and label.startswith(tr("steam_hobby_name") + " + ")
+        if not include_games_var.get() and is_game:
+            return False
+        if installed_only_var.get() and is_game:
+            game_name = label.split(" + ", 1)[1]
+            appid = get_steam_appid(game_name)
+            if not appid or not is_steam_game_installed(appid):
+                return False
+        return True
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -315,6 +340,8 @@ def start_app() -> None:
     button_container = None  # contenedor de botones inferior
     overlay_buttons = []  # referencias a botones del overlay
     final_timeout_id = None
+    games_check = None  # toggle de incluir juegos
+    installed_check = None  # toggle de solo instalados
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
@@ -373,6 +400,10 @@ def start_app() -> None:
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
         rebuild_menus()
+        if games_check is not None:
+            games_check.config(text=tr("include_games"))
+        if installed_check is not None:
+            installed_check.config(text=tr("only_installed"))
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -430,11 +461,24 @@ def start_app() -> None:
         prob_table.tag_configure(
             "odd", background=get_color("light"), foreground=get_color("text")
         )
-        for i, (name, prob) in enumerate(use_cases.get_activity_probabilities()):
+        for i, (name, prob) in enumerate(
+            use_cases.get_activity_probabilities(activity_filter)
+        ):
             tag = "even" if i % 2 == 0 else "odd"
             prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
 
     refresh_probabilities()
+
+    def on_toggle_update():
+        nonlocal installed_check
+        if not include_games_var.get():
+            installed_only_var.set(False)
+            if installed_check is not None:
+                installed_check.state(["disabled"])
+        else:
+            if installed_check is not None:
+                installed_check.state(["!disabled"])
+        refresh_probabilities()
 
     suggestion_label = ttk.Label(
         content_frame,
@@ -571,7 +615,7 @@ def start_app() -> None:
             if table_frame is not None:
                 table_frame.grid()
             button_container.pack(side="bottom", fill="x", pady=20)
-        result = use_cases.get_weighted_random_valid_activity()
+        result = use_cases.get_weighted_random_valid_activity(activity_filter)
         if not result:
             suggestion_label.config(
                 text=tr("no_hobbies")
@@ -586,7 +630,7 @@ def start_app() -> None:
 
         options = []
         for _ in range(20):
-            alt = use_cases.get_weighted_random_valid_activity()
+            alt = use_cases.get_weighted_random_valid_activity(activity_filter)
             if alt:
                 options.append(alt[1])
         options += [final_text, ""]
@@ -712,6 +756,27 @@ def start_app() -> None:
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
     button_container.pack(side="bottom", fill="x", pady=20)
+
+    toggle_frame = ttk.Frame(button_container, style="Surface.TFrame")
+    toggle_frame.pack(pady=(0, 10))
+
+    games_check = ttk.Checkbutton(
+        toggle_frame,
+        text=tr("include_games"),
+        variable=include_games_var,
+        command=on_toggle_update,
+    )
+    games_check.pack(side="left", padx=5)
+
+    installed_check = ttk.Checkbutton(
+        toggle_frame,
+        text=tr("only_installed"),
+        variable=installed_only_var,
+        command=on_toggle_update,
+    )
+    installed_check.pack(side="left", padx=5)
+
+    on_toggle_update()
 
     suggest_btn = ttk.Button(
         button_container,
