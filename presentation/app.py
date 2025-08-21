@@ -4,6 +4,7 @@ import os
 import random
 import threading
 import webbrowser
+import re
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlencode, urlparse, parse_qs, quote
 from pathlib import Path
@@ -263,23 +264,60 @@ def start_app() -> None:
         except Exception:
             return None
 
-    @lru_cache(maxsize=None)
-    def is_steam_game_installed(appid: int) -> bool:
-        steam_paths = []
+    @lru_cache(maxsize=1)
+    def discover_steam_libraries() -> list[Path]:
+        paths: list[Path] = []
+        candidate_roots: list[Path] = []
         if os.name == "nt":
-            steam_paths.append(
-                Path(os.environ.get("PROGRAMFILES(X86)", r"C:\\Program Files (x86)"))
-                / "Steam/steamapps"
-            )
+            pf_x86 = os.environ.get("PROGRAMFILES(X86)")
+            pf = os.environ.get("PROGRAMFILES")
+            if pf_x86:
+                candidate_roots.append(Path(pf_x86) / "Steam")
+            if pf:
+                candidate_roots.append(Path(pf) / "Steam")
+            for letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+                base = Path(f"{letter}:/")
+                candidate_roots.extend(
+                    [
+                        base / "Steam",
+                        base / "SteamLibrary",
+                        base / "Program Files/Steam",
+                        base / "Program Files (x86)/Steam",
+                    ]
+                )
         else:
-            steam_paths.extend(
+            candidate_roots.extend(
                 [
-                    Path.home() / ".steam/steam/steamapps",
-                    Path.home() / ".local/share/Steam/steamapps",
-                    Path.home() / "Library/Application Support/Steam/steamapps",
+                    Path.home() / ".steam/steam",
+                    Path.home() / ".local/share/Steam",
+                    Path.home() / "Library/Application Support/Steam",
                 ]
             )
-        for path in steam_paths:
+        for root in candidate_roots:
+            steamapps = root / "steamapps"
+            if steamapps.exists():
+                paths.append(steamapps)
+                vdf = steamapps / "libraryfolders.vdf"
+                if vdf.exists():
+                    try:
+                        text = vdf.read_text(encoding="utf-8", errors="ignore")
+                        for folder in re.findall(r'"path"\s*"([^"]+)"', text):
+                            lib_path = Path(folder).expanduser()
+                            candidate = lib_path / "steamapps"
+                            if candidate.exists():
+                                paths.append(candidate)
+                    except Exception:
+                        pass
+        unique: list[Path] = []
+        for p in paths:
+            resolved = p.resolve()
+            if resolved not in unique:
+                unique.append(resolved)
+        return unique
+
+    @lru_cache(maxsize=None)
+    def is_steam_game_installed(appid: int) -> bool:
+        for path in discover_steam_libraries():
             if (path / f"appmanifest_{appid}.acf").exists():
                 return True
         return False
@@ -324,7 +362,7 @@ def start_app() -> None:
 
     def build_activity_caches() -> None:
         """Cache weighted activity lists for quick toggle switches."""
-
+        discover_steam_libraries()
         def filter_no_games(item):
             _, label, is_sub, _ = item
             return not (is_sub and label.startswith(tr("steam_hobby_name") + " + "))
