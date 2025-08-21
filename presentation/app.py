@@ -223,16 +223,16 @@ def start_app() -> None:
 
         animation_canvas.delete("all")
         box_w, box_h = 540, 180
-        box_colors = ["#FFEBEE", "#E3F2FD", "#E8F5E9", "#FFF3E0", "#F3E5F5"]
+        #box_colors = ["#FFEBEE", "#E3F2FD", "#E8F5E9", "#FFF3E0", "#F3E5F5"]
         for i, text in enumerate(options):
             x = i * box_w
-            color = random.choice(box_colors)
+            #color = random.choice(box_colors)
             animation_canvas.create_rectangle(
                 x,
                 0,
                 x + box_w,
                 box_h,
-                fill=color,
+                fill=get_color("light"),
                 outline="",
                 tags=("item",),
             )
