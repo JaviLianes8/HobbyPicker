@@ -124,63 +124,69 @@ def start_app() -> None:
         nonlocal final_canvas
         if final_canvas is not None:
             final_canvas.destroy()
-        final_canvas = tk.Canvas(
-            content_frame, bg=get_color("surface"), highlightthickness=0
-        )
-        final_canvas.pack(fill="both", expand=True, before=button_container)
+
+        final_canvas = tk.Canvas(frame_suggest, bg=get_color("surface"), highlightthickness=0)
+        final_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         final_canvas.update_idletasks()
+
         if separator is not None:
             separator.grid_remove()
         if table_frame is not None:
             table_frame.grid_remove()
+        # Oculta la botonera base, NO la metas en el canvas
+        button_container.pack_forget()
+
         cx = final_canvas.winfo_width() / 2
         cy = final_canvas.winfo_height() / 2
+        max_width = final_canvas.winfo_width() * 0.9
+
         text_item = final_canvas.create_text(
-            cx,
-            cy,
-            text=text,
-            fill=get_color("text"),
-            font=("Segoe UI", 10, "bold"),
-            tags=("final_text",),
+            cx, cy, text=text, width=max_width, fill=get_color("text"),
+            font=("Segoe UI", 10, "bold"), tags=("final_text",),
         )
 
+        # >>> NUEVO: crear botonera específica de overlay <<<
+        overlay_buttons = make_overlay_buttons(final_canvas)
+        button_window = final_canvas.create_window(
+            cx, final_canvas.winfo_height() - 20, window=overlay_buttons, anchor="s"
+        )
+
+        def on_resize(event=None):
+            nonlocal max_width
+            max_width = final_canvas.winfo_width() * 0.9
+            final_canvas.itemconfigure(text_item, width=max_width)
+            final_canvas.coords(text_item, final_canvas.winfo_width()/2, final_canvas.winfo_height()/2)
+            final_canvas.coords(button_window, final_canvas.winfo_width()/2, final_canvas.winfo_height()-20)
+
+        final_canvas.bind("<Configure>", on_resize)
+
         def zoom(size=10):
-            if size <= 110:
-                final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
+            final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
+            bbox = final_canvas.bbox(text_item)
+            if bbox and (bbox[2]-bbox[0] < max_width) and (bbox[3]-bbox[1] < final_canvas.winfo_height()*0.8) and size < 110:
                 final_canvas.after(20, lambda: zoom(size + 4))
 
         def launch_confetti():
             width = final_canvas.winfo_width()
             height = final_canvas.winfo_height()
-            colors = [
-                "#FF5E5E",
-                "#FFD700",
-                "#5EFF5E",
-                "#5E5EFF",
-                "#FF5EFF",
-                "#FFA500",
-            ]
+            colors = ["#FF5E5E","#FFD700","#5EFF5E","#5E5EFF","#FF5EFF","#FFA500"]
 
             def create_piece():
                 x = random.randint(0, width)
                 size = random.randint(5, 12)
                 color = random.choice(colors)
-                piece = final_canvas.create_rectangle(
-                    x, -size, x + size, 0, fill=color, outline=""
-                )
+                piece = final_canvas.create_rectangle(x, -size, x+size, 0, fill=color, outline="")
                 dy = random.uniform(3, 6)
-
                 def fall():
                     final_canvas.move(piece, 0, dy)
                     if final_canvas.coords(piece)[3] < height:
                         final_canvas.after(30, fall)
                     else:
                         final_canvas.delete(piece)
-
                 fall()
 
             for i in range(80):
-                final_canvas.after(i * 20, create_piece)
+                final_canvas.after(i*20, create_piece)
 
         zoom()
         launch_confetti()
@@ -194,6 +200,7 @@ def start_app() -> None:
                 separator.grid()
             if table_frame is not None:
                 table_frame.grid()
+            button_container.pack(side="bottom", fill="x", pady=(20, 40))
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
             suggestion_label.config(
@@ -285,7 +292,19 @@ def start_app() -> None:
                     separator.grid()
                 if table_frame is not None:
                     table_frame.grid()
+                button_container.pack(side="bottom", fill="x", pady=(20, 40))
             refresh_probabilities()
+
+    def make_overlay_buttons(parent):
+        """Botonera específica para la capa final (parent debe ser final_canvas)."""
+        overlay = ttk.Frame(parent, style="Surface.TFrame")
+        ttk.Button(
+            overlay, text="🎲 Otra sugerencia", command=suggest, style="Big.TButton", width=20
+        ).pack(side="left", padx=8, pady=10)
+        ttk.Button(
+            overlay, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20
+        ).pack(side="left", padx=8, pady=10)
+        return overlay
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
     button_container.pack(side="bottom", fill="x", pady=(20, 40))
