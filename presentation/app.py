@@ -149,16 +149,6 @@ def start_app() -> None:
     def tr(key: str) -> str:
         return LANG_TEXT[get_effective_language()][key]
 
-    # --- Encabezado ---
-    header = ttk.Frame(root, style="Surface.TFrame")
-    header.pack(fill="x")
-    ttk.Label(
-        header,
-        text="HobbyPicker",
-        padding=(10, 10),
-        style="Title.Surface.TLabel",
-    ).pack(side="left")
-
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
     animation_canvas = None  # zona de animación para las sugerencias
@@ -219,7 +209,6 @@ def start_app() -> None:
         notebook.tab(1, text=tr("tab_config"))
         suggestion_label.config(text=tr("prompt"))
         suggest_btn.config(text=tr("suggest_button"))
-        accept_btn.config(text=tr("accept_button"))
         add_hobby_btn.config(text=tr("add_hobby"))
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
@@ -319,7 +308,6 @@ def start_app() -> None:
             button_container.pack(side="bottom", fill="x", pady=20)
         overlay_buttons.clear()
         suggest_btn.state(["!disabled"])
-        accept_btn.state(["!disabled"])
         suggestion_label.config(text=tr("prompt"))
         suggestion_label.pack(pady=20, expand=True)
         final_timeout_id = None
@@ -348,8 +336,15 @@ def start_app() -> None:
         max_width = final_canvas.winfo_width() * 0.9
 
         text_item = final_canvas.create_text(
-            cx, cy, text=text, width=max_width, fill=get_color("text"),
-            font=("Segoe UI", 10, "bold"), tags=("final_text",),
+            cx,
+            cy,
+            text=text,
+            width=max_width,
+            fill=get_color("text"),
+            font=("Segoe UI", 28, "bold"),
+            tags=("final_text",),
+            justify="center",
+            anchor="center",
         )
 
         # >>> NUEVO: crear botonera específica de overlay <<<
@@ -362,16 +357,18 @@ def start_app() -> None:
             nonlocal max_width
             max_width = final_canvas.winfo_width() * 0.9
             final_canvas.itemconfigure(text_item, width=max_width)
-            final_canvas.coords(text_item, final_canvas.winfo_width()/2, final_canvas.winfo_height()/2)
-            final_canvas.coords(button_window, final_canvas.winfo_width()/2, final_canvas.winfo_height()-20)
+            final_canvas.coords(
+                text_item,
+                final_canvas.winfo_width() / 2,
+                final_canvas.winfo_height() / 2,
+            )
+            final_canvas.coords(
+                button_window,
+                final_canvas.winfo_width() / 2,
+                final_canvas.winfo_height() - 20,
+            )
 
         final_canvas.bind("<Configure>", on_resize)
-
-        def zoom(size=10):
-            final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
-            bbox = final_canvas.bbox(text_item)
-            if bbox and (bbox[2]-bbox[0] < max_width) and (bbox[3]-bbox[1] < final_canvas.winfo_height()*0.8) and size < 110:
-                final_canvas.after(20, lambda: zoom(size + 4))
 
         def launch_confetti():
             width = final_canvas.winfo_width()
@@ -395,7 +392,6 @@ def start_app() -> None:
             for i in range(80):
                 final_canvas.after(i*20, create_piece)
 
-        zoom()
         launch_confetti()
         final_timeout_id = root.after(8000, revert_to_idle)
 
@@ -404,7 +400,6 @@ def start_app() -> None:
         for btn, _ in overlay_buttons:
             btn.state(["disabled"])
         suggest_btn.state(["disabled"])
-        accept_btn.state(["disabled"])
         if final_timeout_id is not None:
             root.after_cancel(final_timeout_id)
             final_timeout_id = None
@@ -521,7 +516,6 @@ def start_app() -> None:
                 button_container.pack(side="bottom", fill="x", pady=20)
             overlay_buttons.clear()
             suggest_btn.state(["!disabled"])
-            accept_btn.state(["!disabled"])
             refresh_probabilities()
 
     def make_overlay_buttons(parent):
@@ -556,16 +550,6 @@ def start_app() -> None:
     )
     suggest_btn.pack(pady=10)
     add_button_hover(suggest_btn)
-
-    accept_btn = ttk.Button(
-        button_container,
-        text=tr("accept_button"),
-        command=accept,
-        style="Big.TButton",
-        width=20,
-    )
-    accept_btn.pack(pady=10)
-    add_button_hover(accept_btn)
 
     def on_tab_change(event):
         if notebook.index("current") == 0:
