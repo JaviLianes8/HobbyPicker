@@ -320,18 +320,35 @@ def start_app() -> None:
         )
         btn.pack(pady=(0, 15))
         add_button_hover(btn)
+    activity_lists = {}
 
-    def activity_filter(item):
-        _, label, is_sub, _ = item
-        is_game = is_sub and label.startswith(tr("steam_hobby_name") + " + ")
-        if not include_games_var.get() and is_game:
-            return False
-        if installed_only_var.get() and is_game:
+    def build_activity_caches() -> None:
+        """Cache weighted activity lists for quick toggle switches."""
+
+        def filter_no_games(item):
+            _, label, is_sub, _ = item
+            return not (is_sub and label.startswith(tr("steam_hobby_name") + " + "))
+
+        def filter_installed(item):
+            _, label, is_sub, _ = item
+            if not (is_sub and label.startswith(tr("steam_hobby_name") + " + ")):
+                return True
             game_name = label.split(" + ", 1)[1]
             appid = get_steam_appid(game_name)
-            if not appid or not is_steam_game_installed(appid):
-                return False
-        return True
+            return appid is not None and is_steam_game_installed(appid)
+
+        activity_lists["all"] = use_cases.build_weighted_items()
+        activity_lists["no_games"] = use_cases.build_weighted_items(filter_no_games)
+        activity_lists["installed"] = use_cases.build_weighted_items(filter_installed)
+
+    build_activity_caches()
+
+    def current_items_weights():
+        if not include_games_var.get():
+            return activity_lists["no_games"]
+        if installed_only_var.get():
+            return activity_lists["installed"]
+        return activity_lists["all"]
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -461,10 +478,13 @@ def start_app() -> None:
         prob_table.tag_configure(
             "odd", background=get_color("light"), foreground=get_color("text")
         )
-        for i, (name, prob) in enumerate(
-            use_cases.get_activity_probabilities(activity_filter)
-        ):
+        items, weights = current_items_weights()
+        if not items:
+            return
+        total_weight = sum(weights)
+        for i, ((_, name, _), weight) in enumerate(zip(items, weights)):
             tag = "even" if i % 2 == 0 else "odd"
+            prob = weight / total_weight
             prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
 
     refresh_probabilities()
@@ -615,7 +635,8 @@ def start_app() -> None:
             if table_frame is not None:
                 table_frame.grid()
             button_container.pack(side="bottom", fill="x", pady=20)
-        result = use_cases.get_weighted_random_valid_activity(activity_filter)
+        items, weights = current_items_weights()
+        result = random.choices(items, weights=weights, k=1)[0] if items else None
         if not result:
             suggestion_label.config(
                 text=tr("no_hobbies")
@@ -630,8 +651,8 @@ def start_app() -> None:
 
         options = []
         for _ in range(20):
-            alt = use_cases.get_weighted_random_valid_activity(activity_filter)
-            if alt:
+            if items:
+                alt = random.choices(items, weights=weights, k=1)[0]
                 options.append(alt[1])
         options += [final_text, ""]
 
@@ -712,6 +733,7 @@ def start_app() -> None:
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
             )
+            build_activity_caches()
             if is_game:
                 show_game_popup(game_name)
             current_activity["id"] = None

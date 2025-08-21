@@ -39,6 +39,18 @@ def _build_weighted_items(
     return items, weights
 
 
+def build_weighted_items(
+    filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
+):
+    """Public wrapper to obtain weighted item lists.
+
+    Exposes the internal `_build_weighted_items` so callers can cache the
+    resulting `(items, weights)` tuples and reuse them without hitting the
+    database repeatedly.
+    """
+    return _build_weighted_items(filter_func)
+
+
 def get_weighted_random_valid_activity(
     filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
 ):
