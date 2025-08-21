@@ -223,14 +223,16 @@ def start_app() -> None:
 
         animation_canvas.delete("all")
         box_w, box_h = 540, 180
+        box_colors = ["#FFEBEE", "#E3F2FD", "#E8F5E9", "#FFF3E0", "#F3E5F5"]
         for i, text in enumerate(options):
             x = i * box_w
+            color = random.choice(box_colors)
             animation_canvas.create_rectangle(
                 x,
                 0,
                 x + box_w,
                 box_h,
-                fill=get_color("light"),
+                fill=color,
                 outline="",
                 tags=("item",),
             )
@@ -257,16 +259,18 @@ def start_app() -> None:
 
         total_shift = (len(options) - 3) * box_w
 
-        def roll(step=0, speed=60):
+        def roll(step=0, speed=10):
             if step < total_shift:
                 animation_canvas.move("item", -speed, 0)
                 step += speed
-                if total_shift - step < box_w * 2 and speed > 5:
-                    speed -= random.randint(2, 4)
-                root.after(15, lambda: roll(step, speed))
+                if step < total_shift * 0.6:
+                    speed = min(speed + 2, 80)
+                elif total_shift - step < box_w * 2:
+                    speed = max(speed - 3, 5)
+                root.after(20, lambda: roll(step, speed))
             else:
                 animation_canvas.move("item", -(total_shift - step), 0)
-                animation_canvas.after(150, finish)
+                animation_canvas.after(200, finish)
 
         def finish():
             animation_canvas.pack_forget()
