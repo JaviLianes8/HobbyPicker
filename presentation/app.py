@@ -490,9 +490,9 @@ def start_app() -> None:
         def finish():
             animation_canvas.pack_forget()
             show_final_activity(tr("what_about").format(final_text))
-            # permitir únicamente el botón de "me gusta"
+            # habilitar acciones en la capa final
             for btn, key in overlay_buttons:
-                if key == "like_overlay":
+                if key in ("like_overlay", "another_button"):
                     btn.state(["!disabled"])
         
         roll()
