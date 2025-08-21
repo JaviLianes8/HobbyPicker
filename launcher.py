@@ -46,7 +46,7 @@ def check_and_launch():
         subprocess.run(["git", "pull", "--ff-only", "origin", "main"], check=True)
         print("✅ Actualizado. Reiniciando…")
         python = sys.executable
-        script = os.path.join(repo_root, "main.py")
+        script = os.path.join(repo_root, "main.pyw")
         os.execv(python, [python, script])
     else:
         print("✅ Ya estás en la última versión.")

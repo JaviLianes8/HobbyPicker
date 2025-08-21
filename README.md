@@ -14,7 +14,7 @@ Aplicación de escritorio escrita en **Python** que te sugiere actividades o hob
 ## Estructura del proyecto
 
 ```
-main.py            # Punto de entrada
+main.pyw           # Punto de entrada
 presentation/      # Interfaz Tkinter
 domain/            # Lógica de negocio y modelos
 data/              # Acceso a datos (DAO SQLite)
@@ -29,7 +29,7 @@ reset_db.py        # Script auxiliar para reiniciar la base de datos
 3. Ejecuta la aplicación:
 
 ```bash
-python main.py
+python main.pyw
 ```
 
 El script instalará los requisitos necesarios (excepto Tkinter, que viene incluido en la distribución estándar de Python) y lanzará la interfaz.

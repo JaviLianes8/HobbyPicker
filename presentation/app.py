@@ -18,6 +18,7 @@ def start_app() -> None:
     apply_style(root, "system")
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
+    animation_canvas = None  # zona de animación para las sugerencias
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
@@ -31,6 +32,8 @@ def start_app() -> None:
         apply_style(root, theme_options[value])
         if canvas is not None:
             canvas.configure(bg=get_color("surface"))
+        if animation_canvas is not None:
+            animation_canvas.configure(bg=get_color("surface"))
 
     menubar = tk.Menu(root)
     theme_menu = tk.Menu(menubar, tearoff=0)
@@ -101,6 +104,14 @@ def start_app() -> None:
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
 
+    animation_canvas = tk.Canvas(
+        content_frame,
+        width=540,
+        height=80,
+        bg=get_color("surface"),
+        highlightthickness=0,
+    )
+
     current_activity = {"id": None, "name": None, "is_subitem": False}
 
     def suggest():
@@ -121,16 +132,60 @@ def start_app() -> None:
             alt = use_cases.get_weighted_random_valid_activity()
             if alt:
                 options.append(alt[1])
-        options.append(final_text)
+        options += [final_text, ""]
 
-        def animate(i=0):
-            if i < len(options):
-                suggestion_label.config(text=f"¿Qué tal hacer: {options[i]}?")
-                root.after(100, lambda: animate(i + 1))
+        animation_canvas.delete("all")
+        box_w, box_h = 180, 60
+        for i, text in enumerate(options):
+            x = i * box_w
+            animation_canvas.create_rectangle(
+                x,
+                0,
+                x + box_w,
+                box_h,
+                fill=get_color("light"),
+                outline="",
+                tags=("item",),
+            )
+            animation_canvas.create_text(
+                x + box_w / 2,
+                box_h / 2,
+                text=text,
+                width=box_w - 10,
+                fill=get_color("text"),
+                tags=("item",),
+            )
+        animation_canvas.create_rectangle(
+            box_w,
+            0,
+            box_w * 2,
+            box_h,
+            outline=get_color("primary"),
+            width=3,
+        )
+
+        suggestion_label.pack_forget()
+        animation_canvas.pack(pady=(60, 40))
+
+        total_shift = (len(options) - 3) * box_w
+
+        def roll(step=0, speed=25):
+            if step < total_shift:
+                animation_canvas.move("item", -speed, 0)
+                step += speed
+                if total_shift - step < box_w * 2 and speed > 2:
+                    speed -= 1
+                root.after(20, lambda: roll(step, speed))
             else:
-                suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
+                animation_canvas.move("item", -(total_shift - step), 0)
+                animation_canvas.after(300, finish)
 
-        animate()
+        def finish():
+            animation_canvas.pack_forget()
+            suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
+            suggestion_label.pack(pady=(60, 40), expand=True)
+
+        roll()
 
     def accept():
         if current_activity["id"]:
