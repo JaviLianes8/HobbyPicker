@@ -364,12 +364,13 @@ def start_app() -> None:
         dlg.title("Steam")
         dlg.transient(root)
         dlg.grab_set()
-        WindowUtils.center_window(dlg, 300, 130)
+        WindowUtils.center_window(dlg, 600, 130)
         ttk.Label(
             dlg,
             text=tr("steam_action_prompt").format(name=game_name),
             justify="center",
             anchor="center",
+            wraplength=560,
         ).pack(padx=20, pady=15)
 
         def act() -> None:

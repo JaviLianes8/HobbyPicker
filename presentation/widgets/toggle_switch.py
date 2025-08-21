@@ -40,7 +40,7 @@ class ToggleSwitch(ttk.Frame):
         c = self.canvas
         c.delete("all")
         c.configure(bg=get_color("surface"))
-        track = get_color("light")
+        track = get_color("subtle")
         if self.variable.get():
             track = get_color("primary")
         if self._disabled:
@@ -50,6 +50,8 @@ class ToggleSwitch(ttk.Frame):
         c.create_oval(4, 6, 20, 22, fill=track, outline=track)
         c.create_oval(20, 6, 36, 22, fill=track, outline=track)
         # knob
-        knob_color = get_color("surface") if not self._disabled else get_color("subtle")
+        knob_color = (
+            get_color("surface") if not self._disabled else get_color("light")
+        )
         knob_x = 20 if self.variable.get() else 4
         c.create_oval(knob_x, 6, knob_x + 16, 22, fill=knob_color, outline=knob_color)
