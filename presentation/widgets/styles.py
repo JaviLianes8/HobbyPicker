@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tkinter import ttk
+from tkinter import ttk, font
 
 try:  # Optional dependency; theme detection falls back gracefully
     import darkdetect
@@ -48,26 +48,30 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         theme = detect_system_theme()
     _CURRENT_THEME = theme
 
+    # --- Color palette ---
+    # Adopt a calmer palette inspired by modern design systems for a more
+    # professional look.  Both light and dark themes share the same accent color
+    # for consistent branding.
     if theme == "dark":
         palette = {
-            "primary": "#0A84FF",
-            "primary_hover": "#0063B1",
-            "background": "#1E1E1E",
-            "surface": "#2C2C2C",
-            "light": "#3A3A3A",
-            "text": "#FFFFFF",
-            "subtle": "#CCCCCC",
+            "primary": "#1E88E5",
+            "primary_hover": "#1565C0",
+            "background": "#0D0D0D",
+            "surface": "#1A1A1A",
+            "light": "#2E2E2E",
+            "text": "#F0F0F0",
+            "subtle": "#B0BEC5",
             "contrast": "#FFFFFF",
         }
     else:  # light theme
         palette = {
-            "primary": "#0078D4",
-            "primary_hover": "#0063B1",
-            "background": "#F4F6F9",
+            "primary": "#1E88E5",
+            "primary_hover": "#1565C0",
+            "background": "#E8EAED",
             "surface": "#FFFFFF",
-            "light": "#D1D9E0",
-            "text": "#1F2A36",
-            "subtle": "#6B7785",
+            "light": "#CFD8DC",
+            "text": "#1C1C1C",
+            "subtle": "#5F6A6A",
             "contrast": "#000000",
         }
 
@@ -85,14 +89,16 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     subtle = palette["subtle"]
     contrast = palette["contrast"]
 
-    base_font = ("Helvetica", 11)
-    bold_font = ("Helvetica", 11, "bold")
-    large_font = ("Helvetica", 13, "bold")
+    # Use a system font that looks crisp on most platforms.  Segoe UI is present
+    # on Windows and falls back gracefully elsewhere.
+    base_font = ("Segoe UI", 11)
+    bold_font = ("Segoe UI", 11, "bold")
+    large_font = ("Segoe UI", 13, "bold")
 
     style.configure(".", background=background, foreground=text, font=base_font)
     style.configure("TFrame", background=background)
-    surface_border = 0 if theme == "dark" else 1
-    surface_relief = "flat" if theme == "dark" else "ridge"
+    surface_border = 0
+    surface_relief = "flat"
     style.configure(
         "Surface.TFrame",
         background=surface,
@@ -102,7 +108,7 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
     style.configure(
         "Outlined.Surface.TFrame",
         background=surface,
-        bordercolor=contrast,
+        bordercolor=light,
         borderwidth=1,
         relief="solid",
     )
@@ -117,8 +123,25 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         font=large_font,
         foreground=text,
     )
-    style.configure("TEntry", relief="flat", padding=6, foreground="black")
-    style.map("TEntry", foreground=[("focus", "black")])
+    # Title labels are used for the global header
+    title_font = ("Segoe UI", 16, "bold")
+    style.configure("Title.TLabel", font=title_font, background=background, foreground=text)
+    style.configure(
+        "Title.Surface.TLabel",
+        font=title_font,
+        background=surface,
+        foreground=text,
+    )
+    style.configure(
+        "TEntry",
+        relief="flat",
+        padding=6,
+        foreground=text,
+        fieldbackground=surface,
+        background=surface,
+        insertcolor=contrast,
+    )
+    style.map("TEntry", foreground=[("focus", contrast)])
 
     style.configure("TNotebook", background=background, padding=10)
     style.configure(
@@ -199,3 +222,28 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
         borderwidth=0,
     )
 
+
+def add_button_hover(button: ttk.Button) -> None:
+    """Apply a subtle hover animation to a ttk.Button."""
+    style_name = button.cget("style") or "TButton"
+    base_font = ttk.Style().lookup(style_name, "font") or button.cget("font")
+
+    # ``font.nametofont`` only accepts named fonts.  On some platforms ttk styles
+    # store fonts as tuples, which would raise a ``TclError``.  Fall back to
+    # constructing a ``Font`` object manually in that case.
+    try:
+        f = font.nametofont(base_font)
+    except Exception:  # pragma: no cover - platform dependent
+        f = font.Font(font=base_font)
+
+    hover_font = f.copy()
+    hover_font.configure(size=f.cget("size") + 1)
+
+    def on_enter(event):
+        button.configure(font=hover_font)
+
+    def on_leave(event):
+        button.configure(font=f)
+
+    button.bind("<Enter>", on_enter)
+    button.bind("<Leave>", on_leave)

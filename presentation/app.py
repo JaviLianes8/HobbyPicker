@@ -1,9 +1,13 @@
+import json
+import locale
 import random
+from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
+
 from domain import use_cases
-from presentation.widgets.styles import apply_style, get_color
+from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 
@@ -16,23 +20,151 @@ def start_app() -> None:
     root.title("HobbyPicker")
     root.minsize(1240, 600)
 
-    apply_style(root, "system")
+    config_path = Path.home() / ".hobbypicker.json"
+
+    def load_settings() -> dict[str, str]:
+        data = {"language": "system", "theme": "system"}
+        try:
+            if config_path.exists():
+                with config_path.open("r", encoding="utf-8") as fh:
+                    stored = json.load(fh)
+                data.update({k: stored.get(k, v) for k, v in data.items()})
+        except Exception:
+            pass
+        return data
+
+    settings = load_settings()
+
+    lang_var = tk.StringVar(value=settings["language"])
+    theme_var = tk.StringVar(value=settings["theme"])
+
+    refresh_probabilities = None  # placeholder, defined after table creation
+
+    def save_settings() -> None:
+        try:
+            with config_path.open("w", encoding="utf-8") as fh:
+                json.dump({"language": lang_var.get(), "theme": theme_var.get()}, fh)
+        except Exception:
+            pass
+
+    apply_style(root, theme_var.get())
+
+    # --- Soporte de idiomas ---
+    LANG_TEXT = {
+        "es": {
+            "tab_today": "¿Qué hago hoy?",
+            "tab_config": "⚙️ Configurar hobbies",
+            "prompt": "¿Qué tal?",
+            "suggest_button": "🎲 Sugerir hobby",
+            "accept_button": "✅ ¡Me gusta!",
+            "another_button": "🎲 Otra sugerencia",
+            "like_overlay": "✅ ¡Me gusta!",
+            "no_hobbies": "No hay hobbies configurados. Ve a la pestaña de configuración.",
+            "what_about": "¿Qué tal hacer: {}?",
+            "menu_theme": "Tema",
+            "menu_language": "Idioma",
+            "theme_system": "Sistema",
+            "theme_light": "Claro",
+            "theme_dark": "Oscuro",
+            "lang_system": "Sistema",
+            "lang_spanish": "Español",
+            "lang_english": "Inglés",
+            "add_hobby": "➕ Añadir hobby",
+            "col_activity": "Actividad",
+            "col_percent": "%",
+            "delete": "Eliminar",
+            "delete_hobby_confirm": "¿Eliminar hobby '{name}'? Esta acción es irreversible.",
+            "deleted": "Eliminado",
+            "hobby_deleted": "Hobby '{name}' eliminado.",
+            "subitems": "Subelementos:",
+            "edit_hobby_title": "Editar: {name}",
+            "edit_subitem_title": "Editar subelemento",
+            "new_name_prompt": "Nuevo nombre para '{name}':",
+            "delete_subitem_confirm": "¿Eliminar subelemento '{name}'?",
+            "new_subitem_title": "Nuevo subelemento",
+            "new_subitem_prompt": "Introduce nuevo:",
+            "add_subitem_btn": "Añadir subelemento",
+            "subitem_title": "Subelemento",
+            "subitem_prompt": "Introduce un elemento relacionado:",
+            "another_title": "¿Otro más?",
+            "another_prompt": "Introduce otro (o cancelar para terminar):",
+            "add_hobby_window_title": "Añadir nuevo hobby",
+            "hobby_title_label": "Título del hobby:",
+            "save": "Guardar",
+            "error": "Error",
+            "need_title": "Debes introducir un título.",
+        },
+        "en": {
+            "tab_today": "What should I do today?",
+            "tab_config": "⚙️ Configure hobbies",
+            "prompt": "How about?",
+            "suggest_button": "🎲 Suggest hobby",
+            "accept_button": "✅ I like it!",
+            "another_button": "🎲 Another suggestion",
+            "like_overlay": "✅ I like it!",
+            "no_hobbies": "No hobbies configured. Go to the settings tab.",
+            "what_about": "How about: {}?",
+            "menu_theme": "Theme",
+            "menu_language": "Language",
+            "theme_system": "System",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "lang_system": "System",
+            "lang_spanish": "Spanish",
+            "lang_english": "English",
+            "add_hobby": "➕ Add hobby",
+            "col_activity": "Activity",
+            "col_percent": "%",
+            "delete": "Delete",
+            "delete_hobby_confirm": "Delete hobby '{name}'? This action cannot be undone.",
+            "deleted": "Deleted",
+            "hobby_deleted": "Hobby '{name}' deleted.",
+            "subitems": "Subitems:",
+            "edit_hobby_title": "Edit: {name}",
+            "edit_subitem_title": "Edit subitem",
+            "new_name_prompt": "New name for '{name}':",
+            "delete_subitem_confirm": "Delete subitem '{name}'?",
+            "new_subitem_title": "New subitem",
+            "new_subitem_prompt": "Enter new:",
+            "add_subitem_btn": "Add subitem",
+            "subitem_title": "Subitem",
+            "subitem_prompt": "Enter a related item:",
+            "another_title": "Another one?",
+            "another_prompt": "Enter another (or cancel to finish):",
+            "add_hobby_window_title": "Add new hobby",
+            "hobby_title_label": "Hobby title:",
+            "save": "Save",
+            "error": "Error",
+            "need_title": "You must enter a title.",
+        },
+    }
+
+    def get_system_language() -> str:
+        sys_lang = locale.getdefaultlocale()[0] or "en"
+        return "es" if sys_lang.lower().startswith("es") else "en"
+
+    def get_effective_language() -> str:
+        return lang_var.get() if lang_var.get() != "system" else get_system_language()
+
+    def tr(key: str) -> str:
+        return LANG_TEXT[get_effective_language()][key]
+
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
     animation_canvas = None  # zona de animación para las sugerencias
     final_canvas = None  # capa final a pantalla completa
     button_container = None  # contenedor de botones inferior
+    overlay_buttons = []  # referencias a botones del overlay
+    final_timeout_id = None
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
 
-    # --- Menú Tema (desplegable) ---
-    theme_options = {"Sistema": "system", "Claro": "light", "Oscuro": "dark"}
-    theme_var = tk.StringVar(value="Sistema")
+    # --- Menús de tema e idioma ---
 
     def change_theme_to(value: str) -> None:
-        apply_style(root, theme_options[value])
+        apply_style(root, value)
         if canvas is not None:
             canvas.configure(bg=get_color("surface"))
         if animation_canvas is not None:
@@ -40,23 +172,60 @@ def start_app() -> None:
         if final_canvas is not None:
             final_canvas.configure(bg=get_color("surface"))
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
+        if refresh_probabilities:
+            refresh_probabilities()
+        save_settings()
 
     menubar = tk.Menu(root)
-    theme_menu = tk.Menu(menubar, tearoff=0)
-    for label in theme_options.keys():
-        theme_menu.add_radiobutton(
-            label=label,
-            variable=theme_var,
-            value=label,
-            command=lambda lbl=label: change_theme_to(lbl),
-        )
-    menubar.add_cascade(label="Tema", menu=theme_menu)
-    root.config(menu=menubar)
-    change_theme_to(theme_var.get())  # tema inicial
+
+    def change_language(code: str) -> None:
+        lang_var.set(code)
+        update_texts()
+        save_settings()
+
+    def rebuild_menus() -> None:
+        menubar.delete(0, "end")
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        for key in ("system", "light", "dark"):
+            theme_menu.add_radiobutton(
+                label=tr(f"theme_{key}"),
+                variable=theme_var,
+                value=key,
+                command=lambda k=key: change_theme_to(k),
+            )
+        menubar.add_cascade(label=tr("menu_theme"), menu=theme_menu)
+
+        language_menu = tk.Menu(menubar, tearoff=0)
+        for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
+            language_menu.add_radiobutton(
+                label=tr(key), value=code, variable=lang_var,
+                command=lambda c=code: change_language(c)
+            )
+        menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+        root.config(menu=menubar)
+
+    def update_texts() -> None:
+        notebook.tab(0, text=tr("tab_today"))
+        notebook.tab(1, text=tr("tab_config"))
+        suggestion_label.config(text=tr("prompt"))
+        suggest_btn.config(text=tr("suggest_button"))
+        add_hobby_btn.config(text=tr("add_hobby"))
+        prob_table.heading("activity", text=tr("col_activity"))
+        prob_table.heading("percent", text=tr("col_percent"))
+        rebuild_menus()
+        if final_canvas is not None and overlay_buttons:
+            final_canvas.itemconfigure(
+                "final_text", text=tr("what_about").format(current_activity["name"])
+            )
+            for btn, key in overlay_buttons:
+                btn.config(text=tr(key))
+
+    rebuild_menus()
+    change_theme_to(theme_var.get())
 
     # --- Pestaña: ¿Qué hago hoy? ---
     frame_suggest = ttk.Frame(notebook, style="Surface.TFrame")
-    notebook.add(frame_suggest, text="¿Qué hago hoy?")
+    notebook.add(frame_suggest, text=tr("tab_today"))
 
     frame_suggest.columnconfigure(0, weight=1)
     frame_suggest.columnconfigure(1, weight=0)
@@ -81,9 +250,9 @@ def start_app() -> None:
         show="headings",
         style="Probability.Treeview",
     )
-    prob_table.heading("activity", text="Actividad", anchor="center")
-    prob_table.heading("percent", text="%", anchor="center")
-    prob_table.column("activity", width=480, anchor="center")
+    prob_table.heading("activity", text=tr("col_activity"), anchor="w")
+    prob_table.heading("percent", text=tr("col_percent"), anchor="center")
+    prob_table.column("activity", width=480, anchor="w")
     prob_table.column("percent", width=180, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
@@ -95,20 +264,27 @@ def start_app() -> None:
     def refresh_probabilities():
         for row in prob_table.get_children():
             prob_table.delete(row)
-        for name, prob in use_cases.get_activity_probabilities():
-            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"))
+        prob_table.tag_configure(
+            "even", background=get_color("surface"), foreground=get_color("text")
+        )
+        prob_table.tag_configure(
+            "odd", background=get_color("light"), foreground=get_color("text")
+        )
+        for i, (name, prob) in enumerate(use_cases.get_activity_probabilities()):
+            tag = "even" if i % 2 == 0 else "odd"
+            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
 
     refresh_probabilities()
 
     suggestion_label = ttk.Label(
         content_frame,
-        text="Pulsa el botón para sugerencia",
+        text=tr("prompt"),
         font=("Segoe UI", 28, "bold"),
         wraplength=500,
         justify="center",
         style="Surface.TLabel",
     )
-    suggestion_label.pack(pady=(60, 40), expand=True)
+    suggestion_label.pack(pady=20, expand=True)
 
     animation_canvas = tk.Canvas(
         content_frame,
@@ -120,8 +296,27 @@ def start_app() -> None:
 
     current_activity = {"id": None, "name": None, "is_subitem": False}
 
+    def revert_to_idle() -> None:
+        nonlocal final_canvas, final_timeout_id
+        if final_canvas is not None:
+            final_canvas.destroy()
+            final_canvas = None
+            if separator is not None:
+                separator.grid()
+            if table_frame is not None:
+                table_frame.grid()
+            button_container.pack(side="bottom", fill="x", pady=20)
+        overlay_buttons.clear()
+        suggest_btn.state(["!disabled"])
+        suggestion_label.config(text=tr("prompt"))
+        suggestion_label.pack(pady=20, expand=True)
+        final_timeout_id = None
+
     def show_final_activity(text: str) -> None:
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
+        if final_timeout_id is not None:
+            root.after_cancel(final_timeout_id)
+            final_timeout_id = None
         if final_canvas is not None:
             final_canvas.destroy()
 
@@ -141,8 +336,15 @@ def start_app() -> None:
         max_width = final_canvas.winfo_width() * 0.9
 
         text_item = final_canvas.create_text(
-            cx, cy, text=text, width=max_width, fill=get_color("text"),
-            font=("Segoe UI", 10, "bold"), tags=("final_text",),
+            cx,
+            cy,
+            text=text,
+            width=max_width,
+            fill=get_color("text"),
+            font=("Segoe UI", 28, "bold"),
+            tags=("final_text",),
+            justify="center",
+            anchor="center",
         )
 
         # >>> NUEVO: crear botonera específica de overlay <<<
@@ -155,16 +357,18 @@ def start_app() -> None:
             nonlocal max_width
             max_width = final_canvas.winfo_width() * 0.9
             final_canvas.itemconfigure(text_item, width=max_width)
-            final_canvas.coords(text_item, final_canvas.winfo_width()/2, final_canvas.winfo_height()/2)
-            final_canvas.coords(button_window, final_canvas.winfo_width()/2, final_canvas.winfo_height()-20)
+            final_canvas.coords(
+                text_item,
+                final_canvas.winfo_width() / 2,
+                final_canvas.winfo_height() / 2,
+            )
+            final_canvas.coords(
+                button_window,
+                final_canvas.winfo_width() / 2,
+                final_canvas.winfo_height() - 20,
+            )
 
         final_canvas.bind("<Configure>", on_resize)
-
-        def zoom(size=10):
-            final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
-            bbox = final_canvas.bbox(text_item)
-            if bbox and (bbox[2]-bbox[0] < max_width) and (bbox[3]-bbox[1] < final_canvas.winfo_height()*0.8) and size < 110:
-                final_canvas.after(20, lambda: zoom(size + 4))
 
         def launch_confetti():
             width = final_canvas.winfo_width()
@@ -188,11 +392,17 @@ def start_app() -> None:
             for i in range(80):
                 final_canvas.after(i*20, create_piece)
 
-        zoom()
         launch_confetti()
+        final_timeout_id = root.after(8000, revert_to_idle)
 
     def suggest():
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
+        for btn, _ in overlay_buttons:
+            btn.state(["disabled"])
+        suggest_btn.state(["disabled"])
+        if final_timeout_id is not None:
+            root.after_cancel(final_timeout_id)
+            final_timeout_id = None
         if final_canvas is not None:
             final_canvas.destroy()
             final_canvas = None
@@ -200,13 +410,13 @@ def start_app() -> None:
                 separator.grid()
             if table_frame is not None:
                 table_frame.grid()
-            button_container.pack(side="bottom", fill="x", pady=(20, 40))
+            button_container.pack(side="bottom", fill="x", pady=20)
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
             suggestion_label.config(
-                text="No hay hobbies configurados. Ve a la pestaña de configuración."
+                text=tr("no_hobbies")
             )
-            suggestion_label.pack(pady=(60, 40), expand=True)
+            suggestion_label.pack(pady=20, expand=True)
             return
 
         final_id, final_text, is_sub = result
@@ -255,7 +465,7 @@ def start_app() -> None:
         )
 
         suggestion_label.pack_forget()
-        animation_canvas.pack(pady=(60, 40), before=button_container)
+        animation_canvas.pack(pady=20, before=button_container)
 
         total_shift = (len(options) - 3) * box_w
 
@@ -274,12 +484,16 @@ def start_app() -> None:
 
         def finish():
             animation_canvas.pack_forget()
-            show_final_activity(f"¿Qué tal hacer: {final_text}?")
-
+            show_final_activity(tr("what_about").format(final_text))
+            # habilitar acciones en la capa final
+            for btn, key in overlay_buttons:
+                if key in ("like_overlay", "another_button"):
+                    btn.state(["!disabled"])
+        
         roll()
 
     def accept():
-        nonlocal final_canvas
+        nonlocal final_canvas, final_timeout_id
         if current_activity["id"]:
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
@@ -287,8 +501,11 @@ def start_app() -> None:
             current_activity["id"] = None
             current_activity["name"] = None
             current_activity["is_subitem"] = False
-            suggestion_label.config(text="Pulsa el botón para sugerencia")
-            suggestion_label.pack(pady=(60, 40), expand=True)
+            suggestion_label.config(text=tr("prompt"))
+            suggestion_label.pack(pady=20, expand=True)
+            if final_timeout_id is not None:
+                root.after_cancel(final_timeout_id)
+                final_timeout_id = None
             if final_canvas is not None:
                 final_canvas.destroy()
                 final_canvas = None
@@ -296,38 +513,43 @@ def start_app() -> None:
                     separator.grid()
                 if table_frame is not None:
                     table_frame.grid()
-                button_container.pack(side="bottom", fill="x", pady=(20, 40))
+                button_container.pack(side="bottom", fill="x", pady=20)
+            overlay_buttons.clear()
+            suggest_btn.state(["!disabled"])
             refresh_probabilities()
 
     def make_overlay_buttons(parent):
         """Botonera específica para la capa final (parent debe ser final_canvas)."""
+        nonlocal overlay_buttons
+        overlay_buttons = []
         overlay = ttk.Frame(parent, style="Surface.TFrame")
-        ttk.Button(
-            overlay, text="🎲 Otra sugerencia", command=suggest, style="Big.TButton", width=20
-        ).pack(side="left", padx=8, pady=10)
-        ttk.Button(
-            overlay, text="✅ ¡Me gusta!", command=accept, style="Big.TButton", width=20
-        ).pack(side="left", padx=8, pady=10)
+        btn1 = ttk.Button(
+            overlay, text=tr("another_button"), command=suggest, style="Big.TButton", width=20
+        )
+        btn1.pack(side="left", padx=8, pady=10)
+        add_button_hover(btn1)
+        btn1.state(["disabled"])  # deshabilitado mientras dura la animación
+        overlay_buttons.append((btn1, "another_button"))
+        btn2 = ttk.Button(
+            overlay, text=tr("like_overlay"), command=accept, style="Big.TButton", width=20
+        )
+        btn2.pack(side="left", padx=8, pady=10)
+        add_button_hover(btn2)
+        overlay_buttons.append((btn2, "like_overlay"))
         return overlay
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
-    button_container.pack(side="bottom", fill="x", pady=(20, 40))
+    button_container.pack(side="bottom", fill="x", pady=20)
 
-    ttk.Button(
+    suggest_btn = ttk.Button(
         button_container,
-        text="🎲 Sugerir hobby",
+        text=tr("suggest_button"),
         command=suggest,
         style="Big.TButton",
         width=20,
-    ).pack(pady=10)
-
-    ttk.Button(
-        button_container,
-        text="✅ ¡Me gusta!",
-        command=accept,
-        style="Big.TButton",
-        width=20,
-    ).pack(pady=10)
+    )
+    suggest_btn.pack(pady=10)
+    add_button_hover(suggest_btn)
 
     def on_tab_change(event):
         if notebook.index("current") == 0:
@@ -337,7 +559,7 @@ def start_app() -> None:
 
     # --- Pestaña: Configurar hobbies ---
     frame_config = ttk.Frame(notebook, style="Surface.TFrame")
-    notebook.add(frame_config, text="⚙️ Configurar hobbies")
+    notebook.add(frame_config, text=tr("tab_config"))
 
     main_config_layout = ttk.Frame(frame_config, style="Surface.TFrame")
     main_config_layout.pack(fill="both", expand=True)
@@ -368,9 +590,12 @@ def start_app() -> None:
 
     sticky_bottom = ttk.Frame(main_config_layout, style="Surface.TFrame")
     sticky_bottom.pack(fill="x", side="bottom", pady=5)
-    ttk.Button(
-        sticky_bottom, text="➕ Añadir hobby", command=lambda: open_add_hobby_window()
-    ).pack()
+    add_hobby_btn = ttk.Button(
+        sticky_bottom, text=tr("add_hobby"), command=lambda: open_add_hobby_window()
+    )
+    add_hobby_btn.pack()
+
+    update_texts()
 
     hobbies_container = scrollable_frame
 
@@ -408,20 +633,20 @@ def start_app() -> None:
 
     def confirm_delete_hobby(hobby_id, hobby_name):
         if messagebox.askyesno(
-            "Eliminar", f"¿Eliminar hobby '{hobby_name}'? Esta acción es irreversible."
+            tr("delete"), tr("delete_hobby_confirm").format(name=hobby_name)
         ):
             use_cases.delete_hobby(hobby_id)
             refresh_listbox()
-            messagebox.showinfo("Eliminado", f"Hobby '{hobby_name}' eliminado.")
+            messagebox.showinfo(tr("deleted"), tr("hobby_deleted").format(name=hobby_name))
 
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
         apply_style(edit_window)
-        edit_window.title(f"Editar: {hobby_name}")
-        WindowUtils.center_window(edit_window, 400, 600)
-        edit_window.minsize(400, 600)
+        edit_window.title(tr("edit_hobby_title").format(name=hobby_name))
+        WindowUtils.center_window(edit_window, 600, 600)
+        edit_window.minsize(600, 600)
 
-        ttk.Label(edit_window, text="Subelementos:").pack(pady=5)
+        ttk.Label(edit_window, text=tr("subitems")).pack(pady=5)
         items_frame = ttk.Frame(edit_window, style="Surface.TFrame")
         items_frame.pack(fill="both", expand=True, pady=5)
 
@@ -440,8 +665,8 @@ def start_app() -> None:
                 def edit_subitem(subitem_id=item[0], current_name=item[2]):
                     new_name = SimpleEntryDialog.ask(
                         parent=edit_window,
-                        title="Editar subelemento",
-                        prompt=f"Nuevo nombre para '{current_name}':",
+                        title=tr("edit_subitem_title"),
+                        prompt=tr("new_name_prompt").format(name=current_name),
                         initial_value=current_name,
                     )
                     if new_name and new_name.strip() != current_name:
@@ -459,20 +684,24 @@ def start_app() -> None:
                 ).pack(side="right")
 
         def delete_item(item_id, name):
-            if messagebox.askyesno("Eliminar", f"¿Eliminar subelemento '{name}'?"):
+            if messagebox.askyesno(
+                tr("delete"), tr("delete_subitem_confirm").format(name=name)
+            ):
                 use_cases.delete_subitem(item_id)
                 refresh_items()
 
         def add_subitem():
             new_item = SimpleEntryDialog.ask(
-                parent=edit_window, title="Nuevo subelemento", prompt="Introduce nuevo:"
+                parent=edit_window,
+                title=tr("new_subitem_title"),
+                prompt=tr("new_subitem_prompt"),
             )
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
                 refresh_items()
 
         ttk.Button(
-            edit_window, text="Añadir subelemento", command=add_subitem
+            edit_window, text=tr("add_subitem_btn"), command=add_subitem
         ).pack(pady=10)
         refresh_items()
 
@@ -480,31 +709,31 @@ def start_app() -> None:
         def save_hobby():
             name = hobby_entry.get().strip()
             if not name:
-                messagebox.showerror("Error", "Debes introducir un título.")
+                messagebox.showerror(tr("error"), tr("need_title"))
                 return
             hobby_id = use_cases.create_hobby(name)
             sub = SimpleEntryDialog.ask(
-                parent=add_window, title="Subelemento", prompt="Introduce un elemento relacionado:"
+                parent=add_window, title=tr("subitem_title"), prompt=tr("subitem_prompt"),
             )
             while sub:
                 use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
                 sub = SimpleEntryDialog.ask(
                     parent=add_window,
-                    title="Otro más?",
-                    prompt="Introduce otro (o cancelar para terminar):",
+                    title=tr("another_title"),
+                    prompt=tr("another_prompt"),
                 )
             add_window.destroy()
             refresh_listbox()
 
         add_window = tk.Toplevel(root)
         apply_style(add_window)
-        add_window.title("Añadir nuevo hobby")
+        add_window.title(tr("add_hobby_window_title"))
         WindowUtils.center_window(add_window, 500, 200)
         add_window.minsize(500, 200)
-        ttk.Label(add_window, text="Título del hobby:").pack(pady=5)
+        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
         hobby_entry = ttk.Entry(add_window, width=40)
         hobby_entry.pack(pady=5)
-        ttk.Button(add_window, text="Guardar", command=save_hobby).pack(pady=10)
+        ttk.Button(add_window, text=tr("save"), command=save_hobby).pack(pady=10)
 
     refresh_listbox()
     root.mainloop()
