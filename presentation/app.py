@@ -38,6 +38,8 @@ def start_app() -> None:
     lang_var = tk.StringVar(value=settings["language"])
     theme_var = tk.StringVar(value=settings["theme"])
 
+    refresh_probabilities = None  # placeholder, defined after table creation
+
     def save_settings() -> None:
         try:
             with config_path.open("w", encoding="utf-8") as fh:
@@ -180,7 +182,7 @@ def start_app() -> None:
         if final_canvas is not None:
             final_canvas.configure(bg=get_color("surface"))
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
-        if "refresh_probabilities" in globals():
+        if refresh_probabilities:
             refresh_probabilities()
         save_settings()
 

@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.styles import apply_style
+
 
 class SimpleEntryDialog:
     @staticmethod
@@ -13,11 +15,11 @@ class SimpleEntryDialog:
         dialog.transient(parent)
         dialog.grab_set()
         dialog.resizable(False, False)
-        WindowUtils.center_window(dialog, 400, 200)
+        WindowUtils.center_window(dialog, 600, 200)
         apply_style(dialog)
 
         ttk.Label(dialog, text=prompt, style="Heading.TLabel").pack(pady=10)
-        entry = ttk.Entry(dialog, width=50)
+        entry = ttk.Entry(dialog, width=75)
         entry.insert(0, initial_value)
         entry.pack(pady=10)
         entry.focus()
@@ -31,8 +33,13 @@ class SimpleEntryDialog:
 
         button_frame = ttk.Frame(dialog)
         button_frame.pack(pady=10)
-        ttk.Button(button_frame, text="Aceptar", command=on_ok, style="Big.TButton").pack(side="left", padx=10)
-        ttk.Button(button_frame, text="Cancelar", command=on_cancel, style="Big.TButton").pack(side="left", padx=10)
+        ttk.Button(button_frame, text="Aceptar", command=on_ok, style="Big.TButton").pack(
+            side="left", padx=10
+        )
+        ttk.Button(button_frame, text="Cancelar", command=on_cancel, style="Big.TButton").pack(
+            side="left", padx=10
+        )
 
         dialog.wait_window()
         return result["value"]
+
