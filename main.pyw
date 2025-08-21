@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 
+
 def install_requirements():
     req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
     if not os.path.exists(req_path):
@@ -20,8 +21,12 @@ def install_requirements():
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", temp_path])
     os.remove(temp_path)
 
-install_requirements()
 
-# 🔁 Ejecutar launcher tras instalar
-from launcher import check_and_launch
-check_and_launch()
+def main():
+    install_requirements()
+    from launcher import check_and_launch
+    check_and_launch()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,3 +1,4 @@
+import random
 import tkinter as tk
 from tkinter import messagebox, ttk
 from functools import partial
@@ -18,6 +19,9 @@ def start_app() -> None:
     apply_style(root, "system")
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
+    animation_canvas = None  # zona de animación para las sugerencias
+    final_canvas = None  # capa final a pantalla completa
+    button_container = None  # contenedor de botones inferior
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
@@ -31,6 +35,11 @@ def start_app() -> None:
         apply_style(root, theme_options[value])
         if canvas is not None:
             canvas.configure(bg=get_color("surface"))
+        if animation_canvas is not None:
+            animation_canvas.configure(bg=get_color("surface"))
+        if final_canvas is not None:
+            final_canvas.configure(bg=get_color("surface"))
+            final_canvas.itemconfigure("final_text", fill=get_color("text"))
 
     menubar = tk.Menu(root)
     theme_menu = tk.Menu(menubar, tearoff=0)
@@ -101,14 +110,108 @@ def start_app() -> None:
     )
     suggestion_label.pack(pady=(60, 40), expand=True)
 
+    animation_canvas = tk.Canvas(
+        content_frame,
+        width=540,
+        height=80,
+        bg=get_color("surface"),
+        highlightthickness=0,
+    )
+
     current_activity = {"id": None, "name": None, "is_subitem": False}
 
+    def show_final_activity(text: str) -> None:
+        nonlocal final_canvas
+        if final_canvas is not None:
+            final_canvas.destroy()
+        final_canvas = tk.Canvas(root, bg=get_color("surface"), highlightthickness=0)
+        root.update_idletasks()
+        if button_container is not None:
+            button_top = button_container.winfo_rooty() - root.winfo_rooty()
+            final_canvas.place(x=0, y=0, relwidth=1, height=button_top)
+        else:
+            final_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        final_canvas.update_idletasks()
+        final_canvas.lift()
+        if separator is not None:
+            separator.grid_remove()
+        if table_frame is not None:
+            table_frame.grid_remove()
+
+
+        cx = final_canvas.winfo_width() / 2
+        cy = final_canvas.winfo_height() / 2
+        text_item = final_canvas.create_text(
+            cx,
+            -100,
+            text=text,
+            fill=get_color("text"),
+            font=("Segoe UI", 10, "bold"),
+            width=final_canvas.winfo_width() * 0.8,
+            tags=("final_text",),
+        )
+
+        def animate(y=-100, size=10):
+            if y < cy:
+                final_canvas.coords(text_item, cx, y)
+                final_canvas.itemconfigure(text_item, font=("Segoe UI", size, "bold"))
+                final_canvas.after(20, lambda: animate(y + 20, min(size + 4, 110)))
+            else:
+                final_canvas.coords(text_item, cx, cy)
+
+        def launch_confetti():
+            width = final_canvas.winfo_width()
+            height = final_canvas.winfo_height()
+            colors = [
+                "#FF5E5E",
+                "#FFD700",
+                "#5EFF5E",
+                "#5E5EFF",
+                "#FF5EFF",
+                "#FFA500",
+            ]
+
+            def create_piece():
+                x = random.randint(0, width)
+                size = random.randint(5, 12)
+                color = random.choice(colors)
+                piece = final_canvas.create_rectangle(
+                    x, -size, x + size, 0, fill=color, outline=""
+                )
+                dy = random.uniform(3, 6)
+
+                def fall():
+                    final_canvas.move(piece, 0, dy)
+                    if final_canvas.coords(piece)[3] < height:
+                        final_canvas.after(30, fall)
+                    else:
+                        final_canvas.delete(piece)
+
+                fall()
+
+            for i in range(80):
+                final_canvas.after(i * 20, create_piece)
+
+        animate()
+        launch_confetti()
+
     def suggest():
+        nonlocal final_canvas
+        if final_canvas is not None:
+            final_canvas.destroy()
+            final_canvas = None
+            if separator is not None:
+                separator.grid()
+            if table_frame is not None:
+                table_frame.grid()
+            if button_container is not None:
+                button_container.pack(side="bottom", pady=(20, 40))
         result = use_cases.get_weighted_random_valid_activity()
         if not result:
             suggestion_label.config(
                 text="No hay hobbies configurados. Ve a la pestaña de configuración."
             )
+            suggestion_label.pack(pady=(60, 40), expand=True)
             return
 
         final_id, final_text, is_sub = result
@@ -121,18 +224,65 @@ def start_app() -> None:
             alt = use_cases.get_weighted_random_valid_activity()
             if alt:
                 options.append(alt[1])
-        options.append(final_text)
+        options += [final_text, ""]
 
-        def animate(i=0):
-            if i < len(options):
-                suggestion_label.config(text=f"¿Qué tal hacer: {options[i]}?")
-                root.after(100, lambda: animate(i + 1))
+        animation_canvas.delete("all")
+        box_scale = 1.5  # size multiplier for loot-box animation
+        box_w, box_h = int(180 * box_scale), int(60 * box_scale)
+        animation_canvas.config(width=box_w * 3, height=box_h)
+        for i, text in enumerate(options):
+            x = i * box_w
+            animation_canvas.create_rectangle(
+                x,
+                0,
+                x + box_w,
+                box_h,
+                fill=get_color("light"),
+                outline="",
+                tags=("item",),
+            )
+            animation_canvas.create_text(
+                x + box_w / 2,
+                box_h / 2,
+                text=text,
+                width=box_w - 20,
+                fill=get_color("text"),
+                font=("Segoe UI", int(24 * box_scale), "bold"),
+                tags=("item",),
+            )
+        animation_canvas.create_rectangle(
+            box_w,
+            0,
+            box_w * 2,
+            box_h,
+            outline=get_color("primary"),
+            width=6,
+        )
+
+        suggestion_label.pack_forget()
+        animation_canvas.pack(pady=(60, 40))
+
+        total_shift = (len(options) - 3) * box_w
+
+        def roll(step=0, speed=int(75 * box_scale)):
+            if step < total_shift:
+                animation_canvas.move("item", -speed, 0)
+                step += speed
+                if total_shift - step < box_w * 2 and speed > 6:
+                    speed -= 3
+                root.after(20, lambda: roll(step, speed))
             else:
-                suggestion_label.config(text=f"¿Qué tal hacer: {final_text}?")
+                animation_canvas.move("item", -(total_shift - step), 0)
+                animation_canvas.after(300, finish)
 
-        animate()
+        def finish():
+            animation_canvas.pack_forget()
+            show_final_activity(f"¿Qué tal hacer: {final_text}?")
+
+        roll()
 
     def accept():
+        nonlocal final_canvas
         if current_activity["id"]:
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
@@ -141,10 +291,20 @@ def start_app() -> None:
             current_activity["name"] = None
             current_activity["is_subitem"] = False
             suggestion_label.config(text="Pulsa el botón para sugerencia")
+            suggestion_label.pack(pady=(60, 40), expand=True)
+            if final_canvas is not None:
+                final_canvas.destroy()
+                final_canvas = None
+                if separator is not None:
+                    separator.grid()
+                if table_frame is not None:
+                    table_frame.grid()
+                if button_container is not None:
+                    button_container.pack(side="bottom", pady=(20, 40))
             refresh_probabilities()
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
-    button_container.pack(pady=(20, 40))
+    button_container.pack(side="bottom", pady=(20, 40))
 
     ttk.Button(
         button_container,
