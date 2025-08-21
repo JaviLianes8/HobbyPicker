@@ -18,6 +18,7 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+from presentation.widgets.toggle_switch import ToggleSwitch
 
 
 
@@ -50,6 +51,11 @@ def start_app() -> None:
 
     include_games_var = tk.BooleanVar(value=True)
     games_only_var = tk.BooleanVar(value=False)
+
+    include_games_switch = None  # switch for including games
+    games_only_switch = None  # switch for installed games only
+    include_games_label = None
+    games_only_label = None
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -421,8 +427,6 @@ def start_app() -> None:
     button_container = None  # contenedor de botones inferior
     overlay_buttons = []  # referencias a botones del overlay
     final_timeout_id = None
-    games_check = None  # toggle de incluir juegos
-    games_only_check = None  # toggle de solo juegos
 
     # --- Notebook principal ---
     notebook = ttk.Notebook(root)
@@ -439,6 +443,10 @@ def start_app() -> None:
         if final_canvas is not None:
             final_canvas.configure(bg=get_color("surface"))
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
+        if include_games_switch is not None:
+            include_games_switch.redraw()
+        if games_only_switch is not None:
+            games_only_switch.redraw()
         if refresh_probabilities:
             refresh_probabilities()
         save_settings()
@@ -481,10 +489,10 @@ def start_app() -> None:
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
         rebuild_menus()
-        if games_check is not None:
-            games_check.config(text=tr("include_games"))
-        if games_only_check is not None:
-            games_only_check.config(text=tr("games_only"))
+        if include_games_label is not None:
+            include_games_label.config(text=tr("include_games"))
+        if games_only_label is not None:
+            games_only_label.config(text=tr("games_only"))
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -554,17 +562,44 @@ def start_app() -> None:
     refresh_probabilities()
 
     def on_toggle_update():
-        nonlocal games_only_check
+        nonlocal games_only_switch
         if games_only_var.get():
             include_games_var.set(True)
         if not include_games_var.get():
             games_only_var.set(False)
-            if games_only_check is not None:
-                games_only_check.state(["disabled"])
+            if games_only_switch is not None:
+                games_only_switch.state(["disabled"])
         else:
-            if games_only_check is not None:
-                games_only_check.state(["!disabled"])
+            if games_only_switch is not None:
+                games_only_switch.state(["!disabled"])
         refresh_probabilities()
+
+    toggle_container = ttk.Frame(content_frame, style="Surface.TFrame")
+    toggle_container.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
+
+    include_row = ttk.Frame(toggle_container, style="Surface.TFrame")
+    include_row.pack(anchor="e", pady=2)
+    include_games_label = ttk.Label(
+        include_row, text=tr("include_games"), style="Surface.TLabel"
+    )
+    include_games_label.pack(side="left", padx=(0, 5))
+    include_games_switch = ToggleSwitch(
+        include_row, variable=include_games_var, command=on_toggle_update
+    )
+    include_games_switch.pack(side="left")
+
+    only_row = ttk.Frame(toggle_container, style="Surface.TFrame")
+    only_row.pack(anchor="e", pady=2)
+    games_only_label = ttk.Label(
+        only_row, text=tr("games_only"), style="Surface.TLabel"
+    )
+    games_only_label.pack(side="left", padx=(0, 5))
+    games_only_switch = ToggleSwitch(
+        only_row, variable=games_only_var, command=on_toggle_update
+    )
+    games_only_switch.pack(side="left")
+
+    on_toggle_update()
 
     suggestion_label = ttk.Label(
         content_frame,
@@ -844,27 +879,6 @@ def start_app() -> None:
 
     button_container = ttk.Frame(content_frame, style="Surface.TFrame")
     button_container.pack(side="bottom", fill="x", pady=20)
-
-    toggle_frame = ttk.Frame(button_container, style="Surface.TFrame")
-    toggle_frame.pack(pady=(0, 10))
-
-    games_check = ttk.Checkbutton(
-        toggle_frame,
-        text=tr("include_games"),
-        variable=include_games_var,
-        command=on_toggle_update,
-    )
-    games_check.pack(side="left", padx=5)
-
-    games_only_check = ttk.Checkbutton(
-        toggle_frame,
-        text=tr("games_only"),
-        variable=games_only_var,
-        command=on_toggle_update,
-    )
-    games_only_check.pack(side="left", padx=5)
-
-    on_toggle_update()
 
     suggest_btn = ttk.Button(
         button_container,
