@@ -1031,34 +1031,47 @@ def start_app() -> None:
         refresh_items()
 
     def open_add_hobby_window():
-        def save_hobby():
+        add_window = tk.Toplevel(root)
+        apply_style(add_window)
+        add_window.title(tr("add_hobby_window_title"))
+        WindowUtils.center_window(add_window, 500, 400)
+        add_window.minsize(500, 300)
+
+        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
+        hobby_entry = ttk.Entry(add_window, width=40)
+        hobby_entry.pack(pady=5)
+        hobby_entry.focus()
+
+        ttk.Label(add_window, text=tr("subitems_label")).pack(pady=(10, 0))
+        subitems_frame = ttk.Frame(add_window)
+        subitems_frame.pack()
+
+        subitem_entries: list[ttk.Entry] = []
+
+        def add_subitem_field() -> None:
+            entry = ttk.Entry(subitems_frame, width=40)
+            entry.pack(pady=2)
+            subitem_entries.append(entry)
+
+        add_subitem_field()
+
+        def save_hobby() -> None:
             name = hobby_entry.get().strip()
             if not name:
                 messagebox.showerror(tr("error"), tr("need_title"))
                 return
             hobby_id = use_cases.create_hobby(name)
-            sub = SimpleEntryDialog.ask(
-                parent=add_window, title=tr("subitem_title"), prompt=tr("subitem_prompt"),
-            )
-            while sub:
-                use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
-                sub = SimpleEntryDialog.ask(
-                    parent=add_window,
-                    title=tr("another_title"),
-                    prompt=tr("another_prompt"),
-                )
+            for entry in subitem_entries:
+                sub = entry.get().strip()
+                if sub:
+                    use_cases.add_subitem_to_hobby(hobby_id, sub)
             build_activity_caches()
             add_window.destroy()
             refresh_listbox()
 
-        add_window = tk.Toplevel(root)
-        apply_style(add_window)
-        add_window.title(tr("add_hobby_window_title"))
-        WindowUtils.center_window(add_window, 500, 200)
-        add_window.minsize(500, 200)
-        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
-        hobby_entry = ttk.Entry(add_window, width=40)
-        hobby_entry.pack(pady=5)
+        ttk.Button(
+            add_window, text=tr("add_subitem_btn"), command=add_subitem_field
+        ).pack(pady=(0, 10))
         ttk.Button(add_window, text=tr("save"), command=save_hobby).pack(pady=10)
 
     refresh_listbox()
