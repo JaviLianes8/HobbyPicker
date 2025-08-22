@@ -51,6 +51,14 @@ LANG_TEXT = {
         "steam_play": "Jugar desde Steam",
         "steam_install": "Instalar/Jugar en Steam",
         "steam_not_found": "No se encontró el juego en Steam.",
+        "epic_import_confirm": "¿Importar juegos de Epic Games?",
+        "epic_import_success": "Se importaron {count} juegos de Epic.",
+        "epic_import_error": "No se pudo importar los juegos de Epic.",
+        "epic_hobby_name": "Jugar desde Epic Games",
+        "epic_action_prompt": "¿Qué quieres hacer con '{name}'?",
+        "epic_play": "Jugar desde Epic Games",
+        "epic_install": "Instalar/Jugar en Epic Games",
+        "epic_not_found": "No se encontró el juego en Epic Games.",
         "include_games": "Incluir juegos",
         "games_only": "Solo juegos",
         "filter": "Filtrar",
@@ -105,6 +113,14 @@ LANG_TEXT = {
         "steam_play": "Play from Steam",
         "steam_install": "Install/Play on Steam",
         "steam_not_found": "Could not find the game on Steam.",
+        "epic_import_confirm": "Import Epic Games library?",
+        "epic_import_success": "Imported {count} Epic games.",
+        "epic_import_error": "Could not import Epic games.",
+        "epic_hobby_name": "Play from Epic Games",
+        "epic_action_prompt": "What do you want to do with '{name}'?",
+        "epic_play": "Play from Epic Games",
+        "epic_install": "Install/Play on Epic Games",
+        "epic_not_found": "Could not find the game on Epic Games.",
         "include_games": "Include games",
         "games_only": "Games only",
         "filter": "Filter",
@@ -118,6 +134,11 @@ STEAM_HOBBY_NAMES = {
     "Play",   # legacy name
 }
 
+EPIC_HOBBY_NAMES = {
+    LANG_TEXT["es"]["epic_hobby_name"],
+    LANG_TEXT["en"]["epic_hobby_name"],
+}
+
 def get_effective_language(lang_code: str) -> str:
     return lang_code if lang_code != "system" else get_system_language()
 
@@ -126,3 +147,7 @@ def tr(lang_code: str, key: str) -> str:
 
 def is_steam_game_label(label: str) -> bool:
     return any(label.startswith(name + " + ") for name in STEAM_HOBBY_NAMES)
+
+
+def is_epic_game_label(label: str) -> bool:
+    return any(label.startswith(name + " + ") for name in EPIC_HOBBY_NAMES)
