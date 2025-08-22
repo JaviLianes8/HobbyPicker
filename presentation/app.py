@@ -17,6 +17,7 @@ from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.utils.lang_utils import get_system_language
+from presentation.utils.config_utils import load_settings, save_settings
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from presentation.widgets.toggle_switch import ToggleSwitch
 
@@ -30,19 +31,6 @@ def start_app() -> None:
     WindowUtils.center_window(root, 1240, 600)
     root.title("HobbyPicker")
     root.minsize(1240, 600)
-
-    config_path = Path.home() / ".hobbypicker.json"
-
-    def load_settings() -> dict[str, str]:
-        data = {"language": "system", "theme": "system"}
-        try:
-            if config_path.exists():
-                with config_path.open("r", encoding="utf-8") as fh:
-                    stored = json.load(fh)
-                data.update({k: stored.get(k, v) for k, v in data.items()})
-        except Exception:
-            pass
-        return data
 
     settings = load_settings()
 
@@ -60,12 +48,8 @@ def start_app() -> None:
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
-    def save_settings() -> None:
-        try:
-            with config_path.open("w", encoding="utf-8") as fh:
-                json.dump({"language": lang_var.get(), "theme": theme_var.get()}, fh)
-        except Exception:
-            pass
+    def save_current_settings() -> None:
+        save_settings({"language": lang_var.get(), "theme": theme_var.get()})
 
     apply_style(root, theme_var.get())
 
@@ -456,14 +440,14 @@ def start_app() -> None:
             games_only_label.config(foreground=get_color("contrast"))
         if refresh_probabilities:
             refresh_probabilities()
-        save_settings()
+        save_current_settings()
 
     menubar = tk.Menu(root)
 
     def change_language(code: str) -> None:
         lang_var.set(code)
         update_texts()
-        save_settings()
+        save_current_settings()
 
     def rebuild_menus() -> None:
         menubar.delete(0, "end")
