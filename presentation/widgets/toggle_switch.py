@@ -40,7 +40,7 @@ class ToggleSwitch(ttk.Frame):
         c = self.canvas
         c.delete("all")
         c.configure(bg=get_color("surface"))
-        track = get_color("subtle")
+        track = get_color("contrast")
         if self.variable.get():
             track = get_color("primary")
         if self._disabled:

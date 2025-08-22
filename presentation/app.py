@@ -448,6 +448,10 @@ def start_app() -> None:
             include_games_switch.redraw()
         if games_only_switch is not None:
             games_only_switch.redraw()
+        if include_games_label is not None:
+            include_games_label.config(foreground=get_color("contrast"))
+        if games_only_label is not None:
+            games_only_label.config(foreground=get_color("contrast"))
         if refresh_probabilities:
             refresh_probabilities()
         save_settings()
@@ -491,9 +495,13 @@ def start_app() -> None:
         prob_table.heading("percent", text=tr("col_percent"))
         rebuild_menus()
         if include_games_label is not None:
-            include_games_label.config(text=tr("include_games"))
+            include_games_label.config(
+                text=tr("include_games"), foreground=get_color("contrast")
+            )
         if games_only_label is not None:
-            games_only_label.config(text=tr("games_only"))
+            games_only_label.config(
+                text=tr("games_only"), foreground=get_color("contrast")
+            )
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -581,7 +589,10 @@ def start_app() -> None:
     include_row = ttk.Frame(toggle_container, style="Surface.TFrame")
     include_row.pack(anchor="e", pady=2)
     include_games_label = ttk.Label(
-        include_row, text=tr("include_games"), style="Surface.TLabel"
+        include_row,
+        text=tr("include_games"),
+        style="Surface.TLabel",
+        foreground=get_color("contrast"),
     )
     include_games_label.pack(side="left", padx=(0, 5))
     include_games_switch = ToggleSwitch(
@@ -592,7 +603,10 @@ def start_app() -> None:
     only_row = ttk.Frame(toggle_container, style="Surface.TFrame")
     only_row.pack(anchor="e", pady=2)
     games_only_label = ttk.Label(
-        only_row, text=tr("games_only"), style="Surface.TLabel"
+        only_row,
+        text=tr("games_only"),
+        style="Surface.TLabel",
+        foreground=get_color("contrast"),
     )
     games_only_label.pack(side="left", padx=(0, 5))
     games_only_switch = ToggleSwitch(
@@ -636,6 +650,7 @@ def start_app() -> None:
         suggest_btn.state(["!disabled"])
         suggestion_label.config(text=tr("prompt"))
         suggestion_label.pack(pady=20, expand=True)
+        toggle_container.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
         final_timeout_id = None
 
     def show_final_activity(text: str) -> None:
@@ -726,6 +741,7 @@ def start_app() -> None:
         for btn, _ in overlay_buttons:
             btn.state(["disabled"])
         suggest_btn.state(["disabled"])
+        toggle_container.place_forget()
         if final_timeout_id is not None:
             root.after_cancel(final_timeout_id)
             final_timeout_id = None
@@ -744,6 +760,7 @@ def start_app() -> None:
                 text=tr("no_hobbies")
             )
             suggestion_label.pack(pady=20, expand=True)
+            toggle_container.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
             return
 
         final_id, final_text, is_sub = result
@@ -843,6 +860,7 @@ def start_app() -> None:
             current_activity["is_subitem"] = False
             suggestion_label.config(text=tr("prompt"))
             suggestion_label.pack(pady=20, expand=True)
+            toggle_container.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
             if final_timeout_id is not None:
                 root.after_cancel(final_timeout_id)
                 final_timeout_id = None
