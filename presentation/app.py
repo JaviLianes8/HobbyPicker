@@ -1071,12 +1071,6 @@ def start_app() -> None:
 
         subitem_entries: list[ttk.Entry] = []
 
-        def resize_subitems_canvas() -> None:
-            add_window.update_idletasks()
-            max_height = 150
-            canvas_height = min(subitems_frame.winfo_reqheight(), max_height)
-            subitems_canvas.configure(height=canvas_height)
-
         def add_subitem_field() -> None:
             container = ttk.Frame(subitems_frame)
             entry = ttk.Entry(container, width=40)
@@ -1084,7 +1078,7 @@ def start_app() -> None:
             def remove_entry() -> None:
                 container.destroy()
                 subitem_entries.remove(entry)
-                resize_subitems_canvas()
+                update_subitems_scroll()
 
             ttk.Button(container, text="🗑", width=3, command=remove_entry).pack(
                 side="right", padx=5
@@ -1092,7 +1086,7 @@ def start_app() -> None:
             entry.pack(side="left", fill="x", expand=True, pady=2)
             container.pack(fill="x", pady=2)
             subitem_entries.append(entry)
-            resize_subitems_canvas()
+            update_subitems_scroll()
 
         add_subitem_field()
 
