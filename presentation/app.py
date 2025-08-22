@@ -48,6 +48,7 @@ def start_app() -> None:
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
+
     def save_current_settings() -> None:
         save_settings({"language": lang_var.get(), "theme": theme_var.get()})
 
@@ -58,6 +59,19 @@ def start_app() -> None:
         return i18n.tr(lang_var.get(), key)
 
     is_steam_game_label = i18n.is_steam_game_label
+    is_epic_game_label = i18n.is_epic_game_label
+
+    epic_token: str | None = None
+
+    def login_epic_token() -> str | None:
+        nonlocal epic_token
+        if epic_token:
+            return epic_token
+        dlg = SimpleEntryDialog(root, tr("epic_login_title"), tr("epic_token_prompt"))
+        token = dlg.result
+        if token:
+            epic_token = token
+        return epic_token
 
     def login_steam_id() -> str | None:
         result = {"id": None}
@@ -109,11 +123,15 @@ def start_app() -> None:
             url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
             data = requests.get(url, timeout=10).content
             root_xml = ET.fromstring(data)
-            games = [
-                g.findtext("name")
-                for g in root_xml.findall("./games/game")
-                if g.findtext("name")
-            ]
+            games = []
+            for g in root_xml.findall("./games/game"):
+                name = g.findtext("name")
+                appid = g.findtext("appID")
+                if not name or not appid:
+                    continue
+                if get_steam_app_type(int(appid)) == "dlc":
+                    continue
+                games.append(name)
             games = list(dict.fromkeys(games))  # eliminate duplicates while preserving order
             if not games:
                 raise ValueError
@@ -132,6 +150,55 @@ def start_app() -> None:
         except Exception:
             messagebox.showerror(tr("error"), tr("steam_import_error"))
 
+    def import_epic_games() -> None:
+        if not messagebox.askyesno("Epic Games", tr("epic_import_confirm")):
+            return
+        try:
+            games: list[str] = []
+            token = login_epic_token()
+            if not token:
+                messagebox.showerror("Epic Games", tr("epic_login_error"))
+                return
+            games.extend(fetch_epic_library(token))
+            for path in discover_epic_manifests():
+                for manifest in path.glob("*.item"):
+                    try:
+                        data = json.loads(manifest.read_text(encoding="utf-8", errors="ignore"))
+                        name = data.get("DisplayName")
+                        if name:
+                            games.append(name)
+                    except Exception:
+                        pass
+            for path in discover_epic_catalogs():
+                for cache in path.glob("*.json"):
+                    try:
+                        data = json.loads(cache.read_text(encoding="utf-8", errors="ignore"))
+                        name = data.get("displayName") or data.get("DisplayName") or data.get("title")
+                        if name:
+                            games.append(name)
+                    except Exception:
+                        pass
+            games = list(dict.fromkeys(games))
+            if not games:
+                raise ValueError
+            hobby_id = use_cases.create_hobby(tr("epic_hobby_name"))
+            all_existing = {
+                s[2]
+                for hid, _ in use_cases.get_all_hobbies()
+                for s in use_cases.get_subitems_for_hobby(hid)
+            }
+            new_games = [g for g in games if g not in all_existing]
+            for name in new_games:
+                use_cases.add_subitem_to_hobby(hobby_id, name)
+            build_activity_caches()
+            refresh_listbox()
+            messagebox.showinfo(
+                "Epic Games",
+                tr("epic_import_success").format(count=len(new_games)),
+            )
+        except Exception:
+            messagebox.showerror(tr("error"), tr("epic_import_error"))
+
     @lru_cache(maxsize=None)
     def get_steam_appid(game_name: str) -> int | None:
         try:
@@ -143,6 +210,21 @@ def start_app() -> None:
             return int(data[0]["appid"]) if data else None
         except Exception:
             return None
+
+    @lru_cache(maxsize=None)
+    def get_steam_app_type(appid: int) -> str | None:
+        try:
+            resp = requests.get(
+                f"https://store.steampowered.com/api/appdetails?appids={appid}&filters=basic",
+                timeout=5,
+            )
+            data = resp.json()
+            info = data.get(str(appid), {})
+            if info.get("success"):
+                return info.get("data", {}).get("type")
+        except Exception:
+            pass
+        return None
 
     @lru_cache(maxsize=1)
     def discover_steam_libraries() -> list[Path]:
@@ -218,6 +300,117 @@ def start_app() -> None:
     def get_local_appid(game_name: str) -> int | None:
         return load_installed_games().get(_normalize_game_name(game_name))
 
+    @lru_cache(maxsize=1)
+    def discover_epic_manifests() -> list[Path]:
+        paths: list[Path] = []
+        candidate_roots: list[Path] = []
+        if os.name == "nt":
+            pd = os.environ.get("PROGRAMDATA")
+            if pd:
+                candidate_roots.append(Path(pd) / "Epic/EpicGamesLauncher/Data/Manifests")
+        else:
+            candidate_roots.extend(
+                [
+                    Path.home() / ".local/share/EpicGamesLauncher/Data/Manifests",
+                    Path.home() / "Library/Application Support/Epic/EpicGamesLauncher/Data/Manifests",
+                ]
+            )
+        for root in candidate_roots:
+            if root.exists():
+                paths.append(root)
+        return paths
+
+    @lru_cache(maxsize=1)
+    def discover_epic_catalogs() -> list[Path]:
+        paths: list[Path] = []
+        candidate_roots: list[Path] = []
+        if os.name == "nt":
+            pd = os.environ.get("PROGRAMDATA")
+            if pd:
+                candidate_roots.append(Path(pd) / "Epic/EpicGamesLauncher/Data/CatalogCache")
+        else:
+            candidate_roots.extend(
+                [
+                    Path.home() / ".local/share/EpicGamesLauncher/Data/CatalogCache",
+                    Path.home() / "Library/Application Support/Epic/EpicGamesLauncher/Data/CatalogCache",
+                ]
+            )
+        for root in candidate_roots:
+            if root.exists():
+                paths.append(root)
+        return paths
+
+    @lru_cache(maxsize=1)
+    def fetch_epic_library(token: str) -> list[str]:
+        if not token:
+            return []
+        try:
+            resp = requests.get(
+                "https://library-launcher-service-prod06.ol.epicgames.com/library/api/public/library",
+                headers={"Authorization": f"bearer {token}"},
+                timeout=5,
+            )
+            data = resp.json()
+            return [e.get("title") for e in data.get("records", []) if e.get("title")]
+        except Exception:
+            return []
+
+    @lru_cache(maxsize=1)
+    def load_epic_installed_games() -> dict[str, str]:
+        games: dict[str, str] = {}
+        for path in discover_epic_manifests():
+            for manifest in path.glob("*.item"):
+                try:
+                    data = json.loads(manifest.read_text(encoding="utf-8", errors="ignore"))
+                    display = data.get("DisplayName")
+                    appname = data.get("AppName")
+                    if display and appname:
+                        games[_normalize_game_name(display)] = appname
+                except Exception:
+                    pass
+        return games
+
+    def get_epic_appname(game_name: str) -> str | None:
+        return load_epic_installed_games().get(_normalize_game_name(game_name))
+
+    def show_epic_game_popup(game_name: str) -> None:
+        load_epic_installed_games.cache_clear()
+        installed = get_epic_appname(game_name) is not None
+        dlg = tk.Toplevel(root)
+        apply_style(dlg)
+        dlg.title("Epic Games")
+        dlg.transient(root)
+        dlg.grab_set()
+        WindowUtils.center_window(dlg, 600, 130)
+        ttk.Label(
+            dlg,
+            text=tr("epic_action_prompt").format(name=game_name),
+            justify="center",
+            anchor="center",
+            wraplength=560,
+        ).pack(padx=20, pady=15)
+
+        def act() -> None:
+            local_app = get_epic_appname(game_name)
+            if local_app:
+                webbrowser.open(
+                    f"com.epicgames.launcher://apps/{local_app}?action=launch"
+                )
+            else:
+                webbrowser.open(
+                    "https://store.epicgames.com/en-US/browse?q=" + quote(game_name)
+                )
+            dlg.destroy()
+
+        btn = ttk.Button(
+            dlg,
+            text=tr("epic_play") if installed else tr("epic_install"),
+            command=act,
+            width=20,
+        )
+        btn.pack(pady=(0, 15))
+        add_button_hover(btn)
+
     def show_game_popup(game_name: str) -> None:
         load_installed_games.cache_clear()
         appid = get_local_appid(game_name)
@@ -264,17 +457,26 @@ def start_app() -> None:
         """Cache weighted activity lists for quick toggle switches."""
         discover_steam_libraries.cache_clear()
         load_installed_games.cache_clear()
+        discover_epic_manifests.cache_clear()
+        load_epic_installed_games.cache_clear()
         discover_steam_libraries()
         load_installed_games()
+        discover_epic_manifests()
+        load_epic_installed_games()
         def filter_no_games(item):
             _, label, is_sub, _ = item
-            return not (is_sub and is_steam_game_label(label))
+            return not (
+                is_sub
+                and (is_steam_game_label(label) or is_epic_game_label(label))
+            )
 
         activity_lists["all"] = use_cases.build_weighted_items()
         activity_lists["no_games"] = use_cases.build_weighted_items(filter_no_games)
         def filter_games(item):
             _, label, is_sub, _ = item
-            return is_sub and is_steam_game_label(label)
+            return is_sub and (
+                is_steam_game_label(label) or is_epic_game_label(label)
+            )
 
         activity_lists["games"] = use_cases.build_weighted_items(filter_games)
         if refresh_probabilities:
@@ -333,6 +535,7 @@ def start_app() -> None:
 
     def rebuild_menus() -> None:
         menubar.delete(0, "end")
+
         theme_menu = tk.Menu(menubar, tearoff=0)
         for key in ("system", "light", "dark"):
             theme_menu.add_radiobutton(
@@ -342,15 +545,21 @@ def start_app() -> None:
                 command=lambda k=key: change_theme_to(k),
             )
         menubar.add_cascade(label=tr("menu_theme"), menu=theme_menu)
+        menubar.add_command(label="|", state="disabled")
 
         language_menu = tk.Menu(menubar, tearoff=0)
         for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
             language_menu.add_radiobutton(
                 label=tr(key), value=code, variable=lang_var,
-                command=lambda c=code: change_language(c)
+                command=lambda c=code: change_language(c),
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
-        menubar.add_command(label="Steam", command=import_steam_games)
+        menubar.add_command(label="|", state="disabled")
+
+        menubar.add_command(label=tr("btn_steam"), command=import_steam_games)
+        menubar.add_command(label="|", state="disabled")
+        menubar.add_command(label=tr("btn_epic"), command=import_epic_games)
+
         root.config(menu=menubar)
 
     def update_texts() -> None:
@@ -362,7 +571,7 @@ def start_app() -> None:
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
         prob_table.heading("info", text="ⓘ")
-        prob_table.heading("steam", text="🎮")
+        prob_table.heading("play", text="🎮")
         prob_table.heading("delete", text="🗑")
         rebuild_menus()
         if include_games_label is not None:
@@ -422,19 +631,19 @@ def start_app() -> None:
 
     prob_table = ttk.Treeview(
         table_frame,
-        columns=("activity", "percent", "info", "steam", "delete"),
+        columns=("activity", "percent", "info", "play", "delete"),
         show="headings",
         style="Probability.Treeview",
     )
     prob_table.heading("activity", text=tr("col_activity"), anchor="w")
     prob_table.heading("percent", text=tr("col_percent"), anchor="center")
     prob_table.heading("info", text="ⓘ", anchor="center")
-    prob_table.heading("steam", text="🎮", anchor="center")
+    prob_table.heading("play", text="🎮", anchor="center")
     prob_table.heading("delete", text="🗑", anchor="center")
     prob_table.column("activity", width=480, anchor="w")
     prob_table.column("percent", width=120, anchor="center")
     prob_table.column("info", width=40, anchor="center")
-    prob_table.column("steam", width=40, anchor="center")
+    prob_table.column("play", width=40, anchor="center")
     prob_table.column("delete", width=40, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
@@ -464,12 +673,17 @@ def start_app() -> None:
             tag = "even" if i % 2 == 0 else "odd"
             prob = weight / total_weight
             iid = f"{'s' if is_sub else 'h'}{item_id}"
-            steam_icon = "🎮" if is_sub and is_steam_game_label(name) else ""
+            game_icon = (
+                "🎮"
+                if is_sub
+                and (is_steam_game_label(name) or is_epic_game_label(name))
+                else ""
+            )
             prob_table.insert(
                 "",
                 "end",
                 iid=iid,
-                values=(name, f"{prob*100:.1f}%", "ⓘ", steam_icon, "🗑"),
+                values=(name, f"{prob*100:.1f}%", "ⓘ", game_icon, "🗑"),
                 tags=(tag,),
             )
             i += 1
@@ -747,11 +961,17 @@ def start_app() -> None:
     def accept():
         nonlocal final_canvas, final_timeout_id
         if current_activity["id"]:
-            is_game = (
+            is_steam_game = (
                 current_activity["is_subitem"]
                 and current_activity["name"]
                 and is_steam_game_label(current_activity["name"])
             )
+            is_epic_game = (
+                current_activity["is_subitem"]
+                and current_activity["name"]
+                and is_epic_game_label(current_activity["name"])
+            )
+            is_game = is_steam_game or is_epic_game
             game_name = (
                 current_activity["name"].split(" + ", 1)[1]
                 if is_game
@@ -762,7 +982,10 @@ def start_app() -> None:
             )
             build_activity_caches()
             if is_game:
-                show_game_popup(game_name)
+                if is_steam_game:
+                    show_game_popup(game_name)
+                else:
+                    show_epic_game_popup(game_name)
             current_activity["id"] = None
             current_activity["name"] = None
             current_activity["is_subitem"] = False
@@ -940,9 +1163,12 @@ def start_app() -> None:
                     build_activity_caches()
                     refresh_probabilities()
         elif column == "#4":
-            if row_id.startswith("s") and is_steam_game_label(name):
+            if row_id.startswith("s"):
                 game_name = name.split(" + ", 1)[1]
-                show_game_popup(game_name)
+                if is_steam_game_label(name):
+                    show_game_popup(game_name)
+                elif is_epic_game_label(name):
+                    show_epic_game_popup(game_name)
 
     prob_table.bind("<Button-1>", on_prob_table_click)
 
@@ -966,6 +1192,11 @@ def start_app() -> None:
                 webbrowser.open(f"https://store.steampowered.com/app/{appid}/")
             else:
                 messagebox.showerror("Steam", tr("steam_not_found"))
+        elif row_id.startswith("s") and is_epic_game_label(name):
+            game_name = name.split(" + ", 1)[1]
+            webbrowser.open(
+                "https://store.epicgames.com/en-US/browse?q=" + quote(game_name)
+            )
 
     prob_table.bind("<Double-1>", on_prob_table_double_click)
 
