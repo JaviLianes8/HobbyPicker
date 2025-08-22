@@ -1034,8 +1034,6 @@ def start_app() -> None:
         add_window = tk.Toplevel(root)
         apply_style(add_window)
         add_window.title(tr("add_hobby_window_title"))
-        WindowUtils.center_window(add_window, 500, 400)
-        add_window.minsize(500, 300)
 
         ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
         hobby_entry = ttk.Entry(add_window, width=40)
@@ -1108,6 +1106,11 @@ def start_app() -> None:
             add_window, text=tr("add_subitem_btn"), command=add_subitem_field
         ).pack(pady=(0, 10))
         ttk.Button(add_window, text=tr("save"), command=save_hobby).pack(pady=10)
+
+        WindowUtils.center_window(add_window, 500, 400)
+        add_window.resizable(False, False)
+        add_window.minsize(500, 400)
+        add_window.maxsize(500, 400)
 
     refresh_listbox()
     root.mainloop()
