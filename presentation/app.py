@@ -1,5 +1,4 @@
 import json
-import locale
 import os
 import random
 import threading
@@ -17,6 +16,7 @@ from functools import partial, lru_cache
 from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
+from presentation.utils.lang_utils import get_system_language
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from presentation.widgets.toggle_switch import ToggleSwitch
 
@@ -180,10 +180,6 @@ def start_app() -> None:
             "filter": "Filter",
         },
     }
-
-    def get_system_language() -> str:
-        sys_lang = locale.getdefaultlocale()[0] or "en"
-        return "es" if sys_lang.lower().startswith("es") else "en"
 
     def get_effective_language() -> str:
         return lang_var.get() if lang_var.get() != "system" else get_system_language()
