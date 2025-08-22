@@ -1044,7 +1044,7 @@ def start_app() -> None:
 
         ttk.Label(add_window, text=tr("subitems_label")).pack(pady=(10, 0))
         subitems_container = ttk.Frame(add_window)
-        subitems_container.pack(fill="both", expand=True)
+        subitems_container.pack(fill="both", expand=False)
 
         subitems_canvas = tk.Canvas(
             subitems_container, bg=get_color("surface"), highlightthickness=0
@@ -1052,7 +1052,7 @@ def start_app() -> None:
         subitems_scroll = ttk.Scrollbar(
             subitems_container, orient="vertical", command=subitems_canvas.yview
         )
-        subitems_canvas.configure(yscrollcommand=subitems_scroll.set)
+        subitems_canvas.configure(yscrollcommand=subitems_scroll.set, height=150)
         subitems_canvas.pack(side="left", fill="both", expand=True)
         subitems_scroll.pack(side="right", fill="y")
         subitems_frame = ttk.Frame(subitems_canvas, style="Surface.TFrame")
@@ -1071,32 +1071,28 @@ def start_app() -> None:
 
         subitem_entries: list[ttk.Entry] = []
 
-        def resize_add_window() -> None:
+        def resize_subitems_canvas() -> None:
             add_window.update_idletasks()
-            max_height = add_window.winfo_screenheight() - 200
+            max_height = 150
             canvas_height = min(subitems_frame.winfo_reqheight(), max_height)
             subitems_canvas.configure(height=canvas_height)
-            add_window.geometry("")
-            WindowUtils.center_window(
-                add_window, add_window.winfo_width(), add_window.winfo_height()
-            )
 
         def add_subitem_field() -> None:
             container = ttk.Frame(subitems_frame)
             entry = ttk.Entry(container, width=40)
-            entry.pack(side="left", pady=2)
 
             def remove_entry() -> None:
                 container.destroy()
                 subitem_entries.remove(entry)
-                resize_add_window()
+                resize_subitems_canvas()
 
             ttk.Button(container, text="🗑", width=3, command=remove_entry).pack(
-                side="left", padx=5
+                side="right", padx=5
             )
+            entry.pack(side="left", fill="x", expand=True, pady=2)
             container.pack(fill="x", pady=2)
             subitem_entries.append(entry)
-            resize_add_window()
+            resize_subitems_canvas()
 
         add_subitem_field()
 
