@@ -946,6 +946,29 @@ def start_app() -> None:
 
     prob_table.bind("<Button-1>", on_prob_table_click)
 
+    def on_prob_table_double_click(event):
+        region = prob_table.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+        column = prob_table.identify_column(event.x)
+        if column != "#1":
+            return
+        row_id = prob_table.identify_row(event.y)
+        if not row_id:
+            return
+        name = prob_table.item(row_id, "values")[0]
+        if row_id.startswith("s") and is_steam_game_label(name):
+            game_name = name.split(" + ", 1)[1]
+            appid = get_local_appid(game_name)
+            if appid is None:
+                appid = get_steam_appid(game_name)
+            if appid:
+                webbrowser.open(f"https://store.steampowered.com/app/{appid}/")
+            else:
+                messagebox.showerror("Steam", tr("steam_not_found"))
+
+    prob_table.bind("<Double-1>", on_prob_table_double_click)
+
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
         apply_style(edit_window)
