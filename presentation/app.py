@@ -115,9 +115,9 @@ def start_app() -> None:
             "steam_import_confirm": "¿Importar juegos de Steam?",
             "steam_import_success": "Se importaron {count} juegos.",
             "steam_import_error": "No se pudo importar los juegos.",
-            "steam_hobby_name": "Jugar",
+            "steam_hobby_name": "Jugar desde Steam",
             "steam_action_prompt": "¿Qué quieres hacer con '{name}'?",
-            "steam_play": "Jugar en Steam",
+            "steam_play": "Jugar desde Steam",
             "steam_install": "Instalar en Steam",
             "steam_not_found": "No se encontró el juego en Steam.",
             "include_games": "Incluir juegos",
@@ -168,9 +168,9 @@ def start_app() -> None:
             "steam_import_confirm": "Import Steam games?",
             "steam_import_success": "Imported {count} games.",
             "steam_import_error": "Could not import games.",
-            "steam_hobby_name": "Play",
+            "steam_hobby_name": "Play from Steam",
             "steam_action_prompt": "What do you want to do with '{name}'?",
-            "steam_play": "Play on Steam",
+            "steam_play": "Play from Steam",
             "steam_install": "Install on Steam",
             "steam_not_found": "Could not find the game on Steam.",
             "include_games": "Include games",
@@ -191,6 +191,8 @@ def start_app() -> None:
     STEAM_HOBBY_NAMES = {
         LANG_TEXT["es"]["steam_hobby_name"],
         LANG_TEXT["en"]["steam_hobby_name"],
+        "Jugar",  # legacy name
+        "Play",   # legacy name
     }
 
     def is_steam_game_label(label: str) -> bool:
