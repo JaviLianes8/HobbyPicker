@@ -8,6 +8,7 @@ from tkinter import messagebox, ttk
 from domain import use_cases
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from ..translations import tr
+from .animations import launch_confetti
 
 
 def build_tabs(root: tk.Tk, lang_var: tk.StringVar):
@@ -25,6 +26,11 @@ def build_tabs(root: tk.Tk, lang_var: tk.StringVar):
         frame_today, text=tr("prompt", lang_var.get()), font=("Segoe UI", 16)
     )
     suggestion_lbl.pack(pady=20)
+
+    # Canvas used to render celebration confetti after accepting a suggestion.
+    confetti_canvas = tk.Canvas(frame_today, highlightthickness=0, bg="")
+    confetti_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+    confetti_canvas.lower()  # Hidden until needed
 
     current = {"id": None, "is_sub": False, "label": None}
 
@@ -63,6 +69,27 @@ def build_tabs(root: tk.Tk, lang_var: tk.StringVar):
         accept_btn.state(["disabled"])
         current.update(id=None, label=None, is_sub=False)
         refresh_probabilities()
+
+        # Celebrate the accepted suggestion with a brief confetti animation.
+        confetti_canvas.lift()
+
+        def _animate():
+            confetti_canvas.delete("all")
+            w = confetti_canvas.winfo_width()
+            h = confetti_canvas.winfo_height()
+            confetti_canvas.create_text(
+                w / 2,
+                h / 2,
+                text=tr("like_overlay", lang_var.get()),
+                font=("Segoe UI", 24, "bold"),
+                fill="white",
+                tag="label",
+            )
+            launch_confetti(confetti_canvas)
+            confetti_canvas.after(1500, confetti_canvas.lower)
+
+        # Defer drawing until geometry is computed
+        confetti_canvas.after(0, _animate)
 
     suggest_btn = ttk.Button(
         frame_today, text=tr("suggest_button", lang_var.get()), command=suggest
