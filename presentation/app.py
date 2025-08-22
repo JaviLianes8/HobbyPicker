@@ -949,11 +949,9 @@ def start_app() -> None:
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
         apply_style(edit_window)
-        edit_window.title(tr("edit_hobby_title").format(name=hobby_name))
+        edit_window.title(tr("edit_subitems_title").format(name=hobby_name))
         WindowUtils.center_window(edit_window, 600, 600)
         edit_window.minsize(600, 600)
-
-        ttk.Label(edit_window, text=tr("subitems")).pack(pady=5)
         items_canvas = tk.Canvas(
             edit_window, bg=get_color("surface"), highlightthickness=0
         )
