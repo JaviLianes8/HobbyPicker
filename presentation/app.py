@@ -545,6 +545,7 @@ def start_app() -> None:
                 command=lambda k=key: change_theme_to(k),
             )
         menubar.add_cascade(label=tr("menu_theme"), menu=theme_menu)
+        menubar.add_command(label="|", state="disabled")
 
         language_menu = tk.Menu(menubar, tearoff=0)
         for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
@@ -553,9 +554,10 @@ def start_app() -> None:
                 command=lambda c=code: change_language(c),
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
-
         menubar.add_command(label="|", state="disabled")
+
         menubar.add_command(label=tr("btn_steam"), command=import_steam_games)
+        menubar.add_command(label="|", state="disabled")
         menubar.add_command(label=tr("btn_epic"), command=import_epic_games)
 
         root.config(menu=menubar)
