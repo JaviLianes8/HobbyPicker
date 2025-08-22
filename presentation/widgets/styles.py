@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tkinter import ttk, font
+from tkinter import ttk, font, TclError
 
 try:  # Optional dependency; theme detection falls back gracefully
     import darkdetect
@@ -231,7 +231,8 @@ def apply_style(master: ttk.Widget | None = None, theme: str | None = None) -> N
 def add_button_hover(button: ttk.Button) -> None:
     """Apply a subtle hover animation to a ttk.Button."""
     style_name = button.cget("style") or "TButton"
-    base_font = ttk.Style().lookup(style_name, "font") or button.cget("font")
+    style = ttk.Style(button)
+    base_font = style.lookup(style_name, "font") or button.cget("font")
 
     # ``font.nametofont`` only accepts named fonts.  On some platforms ttk styles
     # store fonts as tuples, which would raise a ``TclError``.  Fall back to
@@ -244,11 +245,28 @@ def add_button_hover(button: ttk.Button) -> None:
     hover_font = f.copy()
     hover_font.configure(size=f.cget("size") + 1)
 
-    def on_enter(event):
-        button.configure(font=hover_font)
+    supports_font = "font" in button.keys()
+    hover_style = f"{style_name}.hover"
+    if not supports_font:
+        style.configure(hover_style, font=hover_font)
 
-    def on_leave(event):
-        button.configure(font=f)
+    def on_enter(_event):
+        if supports_font:
+            try:
+                button.configure(font=hover_font)
+            except TclError:
+                button.configure(style=hover_style)
+        else:
+            button.configure(style=hover_style)
+
+    def on_leave(_event):
+        if supports_font:
+            try:
+                button.configure(font=f)
+            except TclError:
+                button.configure(style=style_name)
+        else:
+            button.configure(style=style_name)
 
     button.bind("<Enter>", on_enter)
     button.bind("<Leave>", on_leave)
