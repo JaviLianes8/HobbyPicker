@@ -16,10 +16,10 @@ from functools import partial, lru_cache
 from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
-from presentation.utils.lang_utils import get_system_language
 from presentation.utils.config_utils import load_settings, save_settings
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
 from presentation.widgets.toggle_switch import ToggleSwitch
+from presentation.utils import i18n
 
 
 
@@ -54,132 +54,10 @@ def start_app() -> None:
     apply_style(root, theme_var.get())
 
     # --- Soporte de idiomas ---
-    LANG_TEXT = {
-        "es": {
-            "tab_today": "¿Qué hago hoy?",
-            "tab_config": "⚙️ Configurar hobbies",
-            "prompt": "¿Qué tal?",
-            "suggest_button": "🎲 Sugerir hobby",
-            "accept_button": "✅ ¡Me gusta!",
-            "another_button": "🎲 Otra sugerencia",
-            "like_overlay": "✅ ¡Me gusta!",
-            "no_hobbies": "No hay hobbies configurados. Ve a la pestaña de configuración.",
-            "what_about": "¿Qué tal hacer: {}?",
-            "menu_theme": "Tema",
-            "menu_language": "Idioma",
-            "theme_system": "Sistema",
-            "theme_light": "Claro",
-            "theme_dark": "Oscuro",
-            "lang_system": "Sistema",
-            "lang_spanish": "Español",
-            "lang_english": "Inglés",
-            "add_hobby": "➕ Añadir hobby",
-            "col_activity": "Actividad",
-            "col_percent": "%",
-            "delete": "Eliminar",
-            "delete_hobby_confirm": "¿Eliminar hobby '{name}'? Esta acción es irreversible.",
-            "deleted": "Eliminado",
-            "hobby_deleted": "Hobby '{name}' eliminado.",
-            "subitems": "Subelementos:",
-            "edit_hobby_title": "Editar: {name}",
-            "edit_subitem_title": "Editar subelemento",
-            "new_name_prompt": "Nuevo nombre para '{name}':",
-            "delete_subitem_confirm": "¿Eliminar subelemento '{name}'?",
-            "new_subitem_title": "Nuevo subelemento",
-            "new_subitem_prompt": "Introduce nuevo:",
-            "add_subitem_btn": "➕ Añadir subelemento",
-            "subitem_title": "Subelemento",
-            "subitem_prompt": "Introduce un elemento relacionado:",
-            "another_title": "¿Otro más?",
-            "another_prompt": "Introduce otro (o cancelar para terminar):",
-            "add_hobby_window_title": "Añadir nuevo hobby",
-            "hobby_title_label": "Título del hobby:",
-            "save": "Guardar",
-            "error": "Error",
-            "need_title": "Debes introducir un título.",
-            "steam_import_confirm": "¿Importar juegos de Steam?",
-            "steam_import_success": "Se importaron {count} juegos.",
-            "steam_import_error": "No se pudo importar los juegos.",
-            "steam_hobby_name": "Jugar desde Steam",
-            "steam_action_prompt": "¿Qué quieres hacer con '{name}'?",
-            "steam_play": "Jugar desde Steam",
-            "steam_install": "Instalar/Jugar en Steam",
-            "steam_not_found": "No se encontró el juego en Steam.",
-            "include_games": "Incluir juegos",
-            "games_only": "Solo juegos",
-            "filter": "Filtrar",
-        },
-        "en": {
-            "tab_today": "What should I do today?",
-            "tab_config": "⚙️ Configure hobbies",
-            "prompt": "How about?",
-            "suggest_button": "🎲 Suggest hobby",
-            "accept_button": "✅ I like it!",
-            "another_button": "🎲 Another suggestion",
-            "like_overlay": "✅ I like it!",
-            "no_hobbies": "No hobbies configured. Go to the settings tab.",
-            "what_about": "How about: {}?",
-            "menu_theme": "Theme",
-            "menu_language": "Language",
-            "theme_system": "System",
-            "theme_light": "Light",
-            "theme_dark": "Dark",
-            "lang_system": "System",
-            "lang_spanish": "Spanish",
-            "lang_english": "English",
-            "add_hobby": "➕ Add hobby",
-            "col_activity": "Activity",
-            "col_percent": "%",
-            "delete": "Delete",
-            "delete_hobby_confirm": "Delete hobby '{name}'? This action cannot be undone.",
-            "deleted": "Deleted",
-            "hobby_deleted": "Hobby '{name}' deleted.",
-            "subitems": "Subitems:",
-            "edit_hobby_title": "Edit: {name}",
-            "edit_subitem_title": "Edit subitem",
-            "new_name_prompt": "New name for '{name}':",
-            "delete_subitem_confirm": "Delete subitem '{name}'?",
-            "new_subitem_title": "New subitem",
-            "new_subitem_prompt": "Enter new:",
-            "add_subitem_btn": "➕ Add subitem",
-            "subitem_title": "Subitem",
-            "subitem_prompt": "Enter a related item:",
-            "another_title": "Another one?",
-            "another_prompt": "Enter another (or cancel to finish):",
-            "add_hobby_window_title": "Add new hobby",
-            "hobby_title_label": "Hobby title:",
-            "save": "Save",
-            "error": "Error",
-            "need_title": "You must enter a title.",
-            "steam_import_confirm": "Import Steam games?",
-            "steam_import_success": "Imported {count} games.",
-            "steam_import_error": "Could not import games.",
-            "steam_hobby_name": "Play from Steam",
-            "steam_action_prompt": "What do you want to do with '{name}'?",
-            "steam_play": "Play from Steam",
-            "steam_install": "Install/Play on Steam",
-            "steam_not_found": "Could not find the game on Steam.",
-            "include_games": "Include games",
-            "games_only": "Games only",
-            "filter": "Filter",
-        },
-    }
-
-    def get_effective_language() -> str:
-        return lang_var.get() if lang_var.get() != "system" else get_system_language()
-
     def tr(key: str) -> str:
-        return LANG_TEXT[get_effective_language()][key]
+        return i18n.tr(lang_var.get(), key)
 
-    STEAM_HOBBY_NAMES = {
-        LANG_TEXT["es"]["steam_hobby_name"],
-        LANG_TEXT["en"]["steam_hobby_name"],
-        "Jugar",  # legacy name
-        "Play",   # legacy name
-    }
-
-    def is_steam_game_label(label: str) -> bool:
-        return any(label.startswith(name + " + ") for name in STEAM_HOBBY_NAMES)
+    is_steam_game_label = i18n.is_steam_game_label
 
     def login_steam_id() -> str | None:
         result = {"id": None}
