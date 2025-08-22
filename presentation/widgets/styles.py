@@ -252,8 +252,11 @@ def add_button_hover(button: ttk.Button) -> None:
     # style is ``Big.TButton``).  Prepending the prefix keeps the original
     # class and lets the new style inherit from the base one correctly.
     hover_style = f"hover.{style_name}"
-    if not supports_font:
-        style.configure(hover_style, font=hover_font)
+    # Always configure the hover style so it exists if we later fall back to
+    # ``button.configure(style=hover_style)``.  Without this Tk may raise a
+    # ``layout not found`` error on platforms that don't support direct font
+    # configuration.
+    style.configure(hover_style, font=hover_font)
 
     def on_enter(_event):
         if supports_font:
