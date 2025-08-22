@@ -142,6 +142,7 @@ def start_app() -> None:
             return
         try:
             games: list[str] = []
+            games.extend(fetch_epic_library())
             for path in discover_epic_manifests():
                 for manifest in path.glob("*.item"):
                     try:
@@ -321,6 +322,22 @@ def start_app() -> None:
             if root.exists():
                 paths.append(root)
         return paths
+
+    @lru_cache(maxsize=1)
+    def fetch_epic_library() -> list[str]:
+        token = os.environ.get("EPIC_AUTH_TOKEN")
+        if not token:
+            return []
+        try:
+            resp = requests.get(
+                "https://library-launcher-service-prod06.ol.epicgames.com/library/api/public/library",
+                headers={"Authorization": f"bearer {token}"},
+                timeout=5,
+            )
+            data = resp.json()
+            return [e.get("title") for e in data.get("records", []) if e.get("title")]
+        except Exception:
+            return []
 
     @lru_cache(maxsize=1)
     def load_epic_installed_games() -> dict[str, str]:
@@ -532,8 +549,7 @@ def start_app() -> None:
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
         prob_table.heading("info", text="ⓘ")
-        prob_table.heading("steam", text="🎮")
-        prob_table.heading("epic", text="🛍")
+        prob_table.heading("play", text="🎮")
         prob_table.heading("delete", text="🗑")
         rebuild_menus()
         if include_games_label is not None:
@@ -593,21 +609,19 @@ def start_app() -> None:
 
     prob_table = ttk.Treeview(
         table_frame,
-        columns=("activity", "percent", "info", "steam", "epic", "delete"),
+        columns=("activity", "percent", "info", "play", "delete"),
         show="headings",
         style="Probability.Treeview",
     )
     prob_table.heading("activity", text=tr("col_activity"), anchor="w")
     prob_table.heading("percent", text=tr("col_percent"), anchor="center")
     prob_table.heading("info", text="ⓘ", anchor="center")
-    prob_table.heading("steam", text="🎮", anchor="center")
-    prob_table.heading("epic", text="🛍", anchor="center")
+    prob_table.heading("play", text="🎮", anchor="center")
     prob_table.heading("delete", text="🗑", anchor="center")
     prob_table.column("activity", width=480, anchor="w")
     prob_table.column("percent", width=120, anchor="center")
     prob_table.column("info", width=40, anchor="center")
-    prob_table.column("steam", width=40, anchor="center")
-    prob_table.column("epic", width=40, anchor="center")
+    prob_table.column("play", width=40, anchor="center")
     prob_table.column("delete", width=40, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
@@ -637,13 +651,17 @@ def start_app() -> None:
             tag = "even" if i % 2 == 0 else "odd"
             prob = weight / total_weight
             iid = f"{'s' if is_sub else 'h'}{item_id}"
-            steam_icon = "🎮" if is_sub and is_steam_game_label(name) else ""
-            epic_icon = "🛍" if is_sub and is_epic_game_label(name) else ""
+            game_icon = (
+                "🎮"
+                if is_sub
+                and (is_steam_game_label(name) or is_epic_game_label(name))
+                else ""
+            )
             prob_table.insert(
                 "",
                 "end",
                 iid=iid,
-                values=(name, f"{prob*100:.1f}%", "ⓘ", steam_icon, epic_icon, "🗑"),
+                values=(name, f"{prob*100:.1f}%", "ⓘ", game_icon, "🗑"),
                 tags=(tag,),
             )
             i += 1
@@ -1098,7 +1116,7 @@ def start_app() -> None:
         if not row_id:
             return
         name = prob_table.item(row_id, "values")[0]
-        if column == "#6":
+        if column == "#5":
             if row_id.startswith("h"):
                 confirm_delete_hobby(int(row_id[1:]), name)
             elif row_id.startswith("s"):
@@ -1123,13 +1141,12 @@ def start_app() -> None:
                     build_activity_caches()
                     refresh_probabilities()
         elif column == "#4":
-            if row_id.startswith("s") and is_steam_game_label(name):
+            if row_id.startswith("s"):
                 game_name = name.split(" + ", 1)[1]
-                show_game_popup(game_name)
-        elif column == "#5":
-            if row_id.startswith("s") and is_epic_game_label(name):
-                game_name = name.split(" + ", 1)[1]
-                show_epic_game_popup(game_name)
+                if is_steam_game_label(name):
+                    show_game_popup(game_name)
+                elif is_epic_game_label(name):
+                    show_epic_game_popup(game_name)
 
     prob_table.bind("<Button-1>", on_prob_table_click)
 
