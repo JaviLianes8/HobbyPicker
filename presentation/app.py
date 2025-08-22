@@ -496,6 +496,7 @@ def start_app() -> None:
         add_hobby_btn.config(text=tr("add_hobby"))
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
+        prob_table.heading("delete", text=tr("delete"))
         rebuild_menus()
         if include_games_label is not None:
             include_games_label.config(
@@ -538,14 +539,16 @@ def start_app() -> None:
 
     prob_table = ttk.Treeview(
         table_frame,
-        columns=("activity", "percent"),
+        columns=("activity", "percent", "delete"),
         show="headings",
         style="Probability.Treeview",
     )
     prob_table.heading("activity", text=tr("col_activity"), anchor="w")
     prob_table.heading("percent", text=tr("col_percent"), anchor="center")
+    prob_table.heading("delete", text=tr("delete"), anchor="center")
     prob_table.column("activity", width=480, anchor="w")
     prob_table.column("percent", width=180, anchor="center")
+    prob_table.column("delete", width=60, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
     prob_table.configure(yscrollcommand=v_scroll.set)
@@ -566,10 +569,17 @@ def start_app() -> None:
         if not items:
             return
         total_weight = sum(weights)
-        for i, ((_, name, _), weight) in enumerate(zip(items, weights)):
+        for i, ((item_id, name, is_sub), weight) in enumerate(zip(items, weights)):
             tag = "even" if i % 2 == 0 else "odd"
             prob = weight / total_weight
-            prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
+            iid = f"{'s' if is_sub else 'h'}{item_id}"
+            prob_table.insert(
+                "",
+                "end",
+                iid=iid,
+                values=(name, f"{prob*100:.1f}%", "🗑"),
+                tags=(tag,),
+            )
 
     refresh_probabilities()
 
@@ -1001,6 +1011,28 @@ def start_app() -> None:
             build_activity_caches()
             messagebox.showinfo(tr("deleted"), tr("hobby_deleted").format(name=hobby_name))
 
+    def on_prob_table_click(event):
+        region = prob_table.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+        column = prob_table.identify_column(event.x)
+        if column != "#3":
+            return
+        row_id = prob_table.identify_row(event.y)
+        if not row_id:
+            return
+        name = prob_table.item(row_id, "values")[0]
+        if row_id.startswith("h"):
+            confirm_delete_hobby(int(row_id[1:]), name)
+        elif row_id.startswith("s"):
+            if messagebox.askyesno(
+                tr("delete"), tr("delete_subitem_confirm").format(name=name)
+            ):
+                use_cases.delete_subitem(int(row_id[1:]))
+                build_activity_caches()
+
+    prob_table.bind("<Button-1>", on_prob_table_click)
+
     def open_edit_hobby_window(hobby_id, hobby_name):
         edit_window = tk.Toplevel()
         apply_style(edit_window)
@@ -1009,8 +1041,24 @@ def start_app() -> None:
         edit_window.minsize(600, 600)
 
         ttk.Label(edit_window, text=tr("subitems")).pack(pady=5)
-        items_frame = ttk.Frame(edit_window, style="Surface.TFrame")
-        items_frame.pack(fill="both", expand=True, pady=5)
+        items_canvas = tk.Canvas(
+            edit_window, bg=get_color("surface"), highlightthickness=0
+        )
+        items_scroll = ttk.Scrollbar(
+            edit_window, orient="vertical", command=items_canvas.yview
+        )
+        items_canvas.configure(yscrollcommand=items_scroll.set)
+        items_canvas.pack(side="left", fill="both", expand=True, pady=5)
+        items_scroll.pack(side="right", fill="y")
+        items_frame = ttk.Frame(items_canvas, style="Surface.TFrame")
+        items_canvas.create_window((0, 0), window=items_frame, anchor="nw", tags="inner_frame")
+
+        def update_items_scroll(e=None):
+            items_canvas.configure(scrollregion=items_canvas.bbox("all"))
+            items_canvas.itemconfig("inner_frame", width=items_canvas.winfo_width())
+
+        items_frame.bind("<Configure>", update_items_scroll)
+        items_canvas.bind("<Configure>", update_items_scroll)
 
         def refresh_items():
             for w in items_frame.winfo_children():
