@@ -91,7 +91,10 @@ def start_app() -> None:
             "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
         }
         webbrowser.open("https://steamcommunity.com/openid/login?" + urlencode(params))
-        thread.join()
+        thread.join(timeout=30)
+        if thread.is_alive():
+            httpd.shutdown()
+            thread.join()
         httpd.server_close()
         return result["id"]
 
@@ -100,6 +103,7 @@ def start_app() -> None:
             return
         steam_id = login_steam_id()
         if not steam_id:
+            messagebox.showerror("Steam", tr("steam_import_error"))
             return
         try:
             url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
@@ -874,9 +878,9 @@ def start_app() -> None:
             row.columnconfigure(1, weight=0)
 
             label = ttk.Label(
-                row, text=hobby[1], anchor="w", style="Heading.Surface.TLabel"
+                row, text=hobby[1], anchor="center", style="Heading.Surface.TLabel"
             )
-            label.grid(row=0, column=0, sticky="w", padx=10, pady=8)
+            label.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
 
             button_frame = ttk.Frame(row, style="Surface.TFrame")
             button_frame.grid(row=0, column=1, sticky="e", padx=10, pady=8)
