@@ -48,10 +48,6 @@ def start_app() -> None:
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
-    theme_button = None
-    lang_button = None
-    steam_button = None
-    epic_button = None
 
     def save_current_settings() -> None:
         save_settings({"language": lang_var.get(), "theme": theme_var.get()})
@@ -532,25 +528,6 @@ def start_app() -> None:
 
     menubar = tk.Menu(root)
 
-    toolbar = ttk.Frame(root, style="Surface.TFrame")
-    toolbar.pack(side="top", fill="x")
-
-    theme_button = ttk.Menubutton(toolbar, text=tr("menu_theme"), style="Surface.TMenubutton")
-    theme_button.pack(side="left", padx=5, pady=5)
-    add_button_hover(theme_button)
-
-    lang_button = ttk.Menubutton(toolbar, text=tr("menu_language"), style="Surface.TMenubutton")
-    lang_button.pack(side="left", padx=5, pady=5)
-    add_button_hover(lang_button)
-
-    steam_button = ttk.Button(toolbar, text=tr("btn_steam"), command=import_steam_games)
-    steam_button.pack(side="left", padx=5, pady=5)
-    add_button_hover(steam_button)
-
-    epic_button = ttk.Button(toolbar, text=tr("btn_epic"), command=import_epic_games)
-    epic_button.pack(side="left", padx=5, pady=5)
-    add_button_hover(epic_button)
-
     def change_language(code: str) -> None:
         lang_var.set(code)
         update_texts()
@@ -558,6 +535,7 @@ def start_app() -> None:
 
     def rebuild_menus() -> None:
         menubar.delete(0, "end")
+
         theme_menu = tk.Menu(menubar, tearoff=0)
         for key in ("system", "light", "dark"):
             theme_menu.add_radiobutton(
@@ -572,35 +550,15 @@ def start_app() -> None:
         for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
             language_menu.add_radiobutton(
                 label=tr(key), value=code, variable=lang_var,
-                command=lambda c=code: change_language(c)
+                command=lambda c=code: change_language(c),
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+
+        menubar.add_command(label="|", state="disabled")
         menubar.add_command(label=tr("btn_steam"), command=import_steam_games)
         menubar.add_command(label=tr("btn_epic"), command=import_epic_games)
+
         root.config(menu=menubar)
-
-        theme_button.config(text=tr("menu_theme"))
-        theme_menu_btn = tk.Menu(theme_button, tearoff=0)
-        for key in ("system", "light", "dark"):
-            theme_menu_btn.add_radiobutton(
-                label=tr(f"theme_{key}"),
-                variable=theme_var,
-                value=key,
-                command=lambda k=key: change_theme_to(k),
-            )
-        theme_button["menu"] = theme_menu_btn
-
-        lang_button.config(text=tr("menu_language"))
-        lang_menu_btn = tk.Menu(lang_button, tearoff=0)
-        for code, key in (("system", "lang_system"), ("es", "lang_spanish"), ("en", "lang_english")):
-            lang_menu_btn.add_radiobutton(
-                label=tr(key), value=code, variable=lang_var,
-                command=lambda c=code: change_language(c)
-            )
-        lang_button["menu"] = lang_menu_btn
-
-        steam_button.config(text=tr("btn_steam"))
-        epic_button.config(text=tr("btn_epic"))
 
     def update_texts() -> None:
         notebook.tab(0, text=tr("tab_today"))
