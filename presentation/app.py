@@ -56,6 +56,7 @@ def start_app() -> None:
     games_only_switch = None  # switch for installed games only
     include_games_label = None
     games_only_label = None
+    filter_label = None
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -122,6 +123,7 @@ def start_app() -> None:
             "steam_not_found": "No se encontró el juego en Steam.",
             "include_games": "Incluir juegos",
             "games_only": "Solo juegos",
+            "filter": "Filtrar",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -175,6 +177,7 @@ def start_app() -> None:
             "steam_not_found": "Could not find the game on Steam.",
             "include_games": "Include games",
             "games_only": "Games only",
+            "filter": "Filter",
         },
     }
 
@@ -508,6 +511,8 @@ def start_app() -> None:
             games_only_label.config(
                 text=tr("games_only"), foreground=get_color("contrast")
             )
+        if filter_label is not None:
+            filter_label.config(text=tr("filter"), foreground=get_color("contrast"))
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -536,8 +541,22 @@ def start_app() -> None:
     table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=740)
     table_frame.grid(row=0, column=2, sticky="nsew", padx=10)
     table_frame.grid_propagate(False)
-    table_frame.rowconfigure(0, weight=1)
+    table_frame.rowconfigure(1, weight=1)
     table_frame.columnconfigure(0, weight=1)
+
+    filter_row = ttk.Frame(table_frame, style="Surface.TFrame")
+    filter_row.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+    filter_row.columnconfigure(1, weight=1)
+    filter_label = ttk.Label(
+        filter_row,
+        text=tr("filter"),
+        style="Surface.TLabel",
+        foreground=get_color("contrast"),
+    )
+    filter_label.grid(row=0, column=0, padx=(0, 5))
+    filter_var = tk.StringVar()
+    filter_entry = ttk.Entry(filter_row, textvariable=filter_var)
+    filter_entry.grid(row=0, column=1, sticky="ew")
 
     prob_table = ttk.Treeview(
         table_frame,
@@ -559,8 +578,8 @@ def start_app() -> None:
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
     prob_table.configure(yscrollcommand=v_scroll.set)
 
-    prob_table.grid(row=0, column=0, sticky="nsew")
-    v_scroll.grid(row=0, column=1, sticky="ns")
+    prob_table.grid(row=1, column=0, sticky="nsew")
+    v_scroll.grid(row=1, column=1, sticky="ns")
 
     def refresh_probabilities():
         for row in prob_table.get_children():
@@ -575,7 +594,11 @@ def start_app() -> None:
         if not items:
             return
         total_weight = sum(weights)
-        for i, ((item_id, name, is_sub), weight) in enumerate(zip(items, weights)):
+        filter_text = filter_var.get().lower()
+        i = 0
+        for (item_id, name, is_sub), weight in zip(items, weights):
+            if filter_text and filter_text not in name.lower():
+                continue
             tag = "even" if i % 2 == 0 else "odd"
             prob = weight / total_weight
             iid = f"{'s' if is_sub else 'h'}{item_id}"
@@ -587,8 +610,11 @@ def start_app() -> None:
                 values=(name, f"{prob*100:.1f}%", "ⓘ", steam_icon, "🗑"),
                 tags=(tag,),
             )
+            i += 1
 
     refresh_probabilities()
+
+    filter_var.trace_add("write", lambda *_: refresh_probabilities())
 
     def on_toggle_update():
         nonlocal games_only_switch
@@ -971,7 +997,7 @@ def start_app() -> None:
         text=tr("add_hobby"),
         command=lambda: open_add_hobby_window(),
     )
-    add_hobby_btn.place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
+    add_hobby_btn.place(relx=0.0, rely=1.0, anchor="sw", x=20, y=-20)
 
     update_texts()
 
@@ -1141,7 +1167,7 @@ def start_app() -> None:
         btn_add_sub = ttk.Button(
             edit_window, text=tr("add_subitem_btn"), command=add_subitem
         )
-        btn_add_sub.place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
+        btn_add_sub.place(relx=0.0, rely=1.0, anchor="sw", x=20, y=-20)
         refresh_items()
 
     def open_add_hobby_window():
