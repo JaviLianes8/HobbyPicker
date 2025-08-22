@@ -344,14 +344,27 @@ def start_app() -> None:
     def fetch_epic_library(token: str) -> list[str]:
         if not token:
             return []
+        records: list[str] = []
+        cursor: str | None = None
         try:
-            resp = requests.get(
-                "https://library-launcher-service-prod06.ol.epicgames.com/library/api/public/library",
-                headers={"Authorization": f"bearer {token}"},
-                timeout=5,
-            )
-            data = resp.json()
-            return [e.get("title") for e in data.get("records", []) if e.get("title")]
+            while True:
+                params = {"includeMetadata": "true"}
+                if cursor:
+                    params["cursor"] = cursor
+                resp = requests.get(
+                    "https://library-service.live.use1a.on.epicgames.com/library/api/public/items",
+                    headers={"Authorization": f"bearer {token}"},
+                    params=params,
+                    timeout=5,
+                )
+                data = resp.json()
+                records.extend(
+                    e.get("title") for e in data.get("records", []) if e.get("title")
+                )
+                cursor = data.get("responseMetadata", {}).get("nextCursor")
+                if not cursor:
+                    break
+            return records
         except Exception:
             return []
 
