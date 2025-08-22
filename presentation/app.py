@@ -1031,35 +1031,86 @@ def start_app() -> None:
         refresh_items()
 
     def open_add_hobby_window():
-        def save_hobby():
+        add_window = tk.Toplevel(root)
+        apply_style(add_window)
+        add_window.title(tr("add_hobby_window_title"))
+
+        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
+        hobby_entry = ttk.Entry(add_window, width=40)
+        hobby_entry.pack(pady=5)
+        hobby_entry.focus()
+
+        ttk.Label(add_window, text=tr("subitems_label")).pack(pady=(10, 0))
+        subitems_container = ttk.Frame(add_window)
+        subitems_container.pack(fill="both", expand=False)
+
+        subitems_canvas = tk.Canvas(
+            subitems_container, bg=get_color("surface"), highlightthickness=0
+        )
+        subitems_scroll = ttk.Scrollbar(
+            subitems_container, orient="vertical", command=subitems_canvas.yview
+        )
+        subitems_canvas.configure(yscrollcommand=subitems_scroll.set, height=150)
+        subitems_canvas.pack(side="left", fill="both", expand=True)
+        subitems_scroll.pack(side="right", fill="y")
+        subitems_frame = ttk.Frame(subitems_canvas, style="Surface.TFrame")
+        subitems_canvas.create_window(
+            (0, 0), window=subitems_frame, anchor="nw", tags="inner_frame"
+        )
+
+        def update_subitems_scroll(e=None):
+            subitems_canvas.configure(scrollregion=subitems_canvas.bbox("all"))
+            subitems_canvas.itemconfig(
+                "inner_frame", width=subitems_canvas.winfo_width()
+            )
+
+        subitems_frame.bind("<Configure>", update_subitems_scroll)
+        subitems_canvas.bind("<Configure>", update_subitems_scroll)
+
+        subitem_entries: list[ttk.Entry] = []
+
+        def add_subitem_field() -> None:
+            container = ttk.Frame(subitems_frame)
+            entry = ttk.Entry(container, width=40)
+
+            def remove_entry() -> None:
+                container.destroy()
+                subitem_entries.remove(entry)
+                update_subitems_scroll()
+
+            ttk.Button(container, text="🗑", width=3, command=remove_entry).pack(
+                side="right", padx=5
+            )
+            entry.pack(side="left", fill="x", expand=True, pady=2)
+            container.pack(fill="x", pady=2)
+            subitem_entries.append(entry)
+            update_subitems_scroll()
+
+        add_subitem_field()
+
+        def save_hobby() -> None:
             name = hobby_entry.get().strip()
             if not name:
                 messagebox.showerror(tr("error"), tr("need_title"))
                 return
             hobby_id = use_cases.create_hobby(name)
-            sub = SimpleEntryDialog.ask(
-                parent=add_window, title=tr("subitem_title"), prompt=tr("subitem_prompt"),
-            )
-            while sub:
-                use_cases.add_subitem_to_hobby(hobby_id, sub.strip())
-                sub = SimpleEntryDialog.ask(
-                    parent=add_window,
-                    title=tr("another_title"),
-                    prompt=tr("another_prompt"),
-                )
+            for entry in subitem_entries:
+                sub = entry.get().strip()
+                if sub:
+                    use_cases.add_subitem_to_hobby(hobby_id, sub)
             build_activity_caches()
             add_window.destroy()
             refresh_listbox()
 
-        add_window = tk.Toplevel(root)
-        apply_style(add_window)
-        add_window.title(tr("add_hobby_window_title"))
-        WindowUtils.center_window(add_window, 500, 200)
-        add_window.minsize(500, 200)
-        ttk.Label(add_window, text=tr("hobby_title_label")).pack(pady=5)
-        hobby_entry = ttk.Entry(add_window, width=40)
-        hobby_entry.pack(pady=5)
+        ttk.Button(
+            add_window, text=tr("add_subitem_btn"), command=add_subitem_field
+        ).pack(pady=(0, 10))
         ttk.Button(add_window, text=tr("save"), command=save_hobby).pack(pady=10)
+
+        WindowUtils.center_window(add_window, 500, 400)
+        add_window.resizable(False, False)
+        add_window.minsize(500, 400)
+        add_window.maxsize(500, 400)
 
     refresh_listbox()
     root.mainloop()
