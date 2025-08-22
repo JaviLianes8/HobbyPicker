@@ -1,21 +1,24 @@
 import json
 import locale
+import os
 import random
 import threading
 import webbrowser
+import re
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import urlencode, urlparse, parse_qs, quote
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import requests
 import tkinter as tk
 from tkinter import messagebox, ttk
-from functools import partial
+from functools import partial, lru_cache
 
 from domain import use_cases
 from presentation.widgets.styles import apply_style, get_color, add_button_hover
 from presentation.utils.window_utils import WindowUtils
 from presentation.widgets.simple_entry_dialog import SimpleEntryDialog
+from presentation.widgets.toggle_switch import ToggleSwitch
 
 
 
@@ -46,6 +49,13 @@ def start_app() -> None:
     lang_var = tk.StringVar(value=settings["language"])
     theme_var = tk.StringVar(value=settings["theme"])
 
+    include_games_var = tk.BooleanVar(value=True)
+    games_only_var = tk.BooleanVar(value=False)
+
+    include_games_switch = None  # switch for including games
+    games_only_switch = None  # switch for installed games only
+    include_games_label = None
+    games_only_label = None
 
     refresh_probabilities = None  # placeholder, defined after table creation
 
@@ -106,6 +116,12 @@ def start_app() -> None:
             "steam_import_success": "Se importaron {count} juegos.",
             "steam_import_error": "No se pudo importar los juegos.",
             "steam_hobby_name": "Jugar",
+            "steam_action_prompt": "¿Qué quieres hacer con '{name}'?",
+            "steam_play": "Jugar en Steam",
+            "steam_install": "Instalar en Steam",
+            "steam_not_found": "No se encontró el juego en Steam.",
+            "include_games": "Incluir juegos",
+            "games_only": "Solo juegos",
         },
         "en": {
             "tab_today": "What should I do today?",
@@ -153,6 +169,12 @@ def start_app() -> None:
             "steam_import_success": "Imported {count} games.",
             "steam_import_error": "Could not import games.",
             "steam_hobby_name": "Play",
+            "steam_action_prompt": "What do you want to do with '{name}'?",
+            "steam_play": "Play on Steam",
+            "steam_install": "Install on Steam",
+            "steam_not_found": "Could not find the game on Steam.",
+            "include_games": "Include games",
+            "games_only": "Games only",
         },
     }
 
@@ -165,6 +187,14 @@ def start_app() -> None:
 
     def tr(key: str) -> str:
         return LANG_TEXT[get_effective_language()][key]
+
+    STEAM_HOBBY_NAMES = {
+        LANG_TEXT["es"]["steam_hobby_name"],
+        LANG_TEXT["en"]["steam_hobby_name"],
+    }
+
+    def is_steam_game_label(label: str) -> bool:
+        return any(label.startswith(name + " + ") for name in STEAM_HOBBY_NAMES)
 
     def login_steam_id() -> str | None:
         result = {"id": None}
@@ -229,12 +259,167 @@ def start_app() -> None:
             new_games = [g for g in games if g not in all_existing]
             for name in new_games:
                 use_cases.add_subitem_to_hobby(hobby_id, name)
+            build_activity_caches()
             refresh_listbox()
-            if refresh_probabilities:
-                refresh_probabilities()
             messagebox.showinfo("Steam", tr("steam_import_success").format(count=len(new_games)))
         except Exception:
             messagebox.showerror(tr("error"), tr("steam_import_error"))
+
+    @lru_cache(maxsize=None)
+    def get_steam_appid(game_name: str) -> int | None:
+        try:
+            resp = requests.get(
+                "https://steamcommunity.com/actions/SearchApps/" + quote(game_name),
+                timeout=5,
+            )
+            data = resp.json()
+            return int(data[0]["appid"]) if data else None
+        except Exception:
+            return None
+
+    @lru_cache(maxsize=1)
+    def discover_steam_libraries() -> list[Path]:
+        paths: list[Path] = []
+        candidate_roots: list[Path] = []
+        if os.name == "nt":
+            pf_x86 = os.environ.get("PROGRAMFILES(X86)")
+            pf = os.environ.get("PROGRAMFILES")
+            if pf_x86:
+                candidate_roots.append(Path(pf_x86) / "Steam")
+            if pf:
+                candidate_roots.append(Path(pf) / "Steam")
+            for letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+                base = Path(f"{letter}:/")
+                candidate_roots.extend(
+                    [
+                        base / "Steam",
+                        base / "SteamLibrary",
+                        base / "Program Files/Steam",
+                        base / "Program Files (x86)/Steam",
+                    ]
+                )
+        else:
+            candidate_roots.extend(
+                [
+                    Path.home() / ".steam/steam",
+                    Path.home() / ".local/share/Steam",
+                    Path.home() / "Library/Application Support/Steam",
+                ]
+            )
+        for root in candidate_roots:
+            steamapps = root / "steamapps"
+            if steamapps.exists():
+                paths.append(steamapps)
+                vdf = steamapps / "libraryfolders.vdf"
+                if vdf.exists():
+                    try:
+                        text = vdf.read_text(encoding="utf-8", errors="ignore")
+                        for folder in re.findall(r'"path"\s*"([^"]+)"', text):
+                            lib_path = Path(folder).expanduser()
+                            candidate = lib_path / "steamapps"
+                            if candidate.exists():
+                                paths.append(candidate)
+                    except Exception:
+                        pass
+        unique: list[Path] = []
+        for p in paths:
+            resolved = p.resolve()
+            if resolved not in unique:
+                unique.append(resolved)
+        return unique
+
+    def _normalize_game_name(name: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", name.lower())
+
+    @lru_cache(maxsize=1)
+    def load_installed_games() -> dict[str, int]:
+        games: dict[str, int] = {}
+        for path in discover_steam_libraries():
+            for manifest in path.glob("appmanifest_*.acf"):
+                try:
+                    text = manifest.read_text(encoding="utf-8", errors="ignore")
+                    appid_match = re.search(r'"appid"\s*"(\d+)"', text)
+                    name_match = re.search(r'"name"\s*"([^\"]+)"', text)
+                    if appid_match and name_match:
+                        games[_normalize_game_name(name_match.group(1))] = int(
+                            appid_match.group(1)
+                        )
+                except Exception:
+                    pass
+        return games
+
+    def get_local_appid(game_name: str) -> int | None:
+        return load_installed_games().get(_normalize_game_name(game_name))
+
+    def show_game_popup(game_name: str) -> None:
+        appid = get_local_appid(game_name)
+        installed = appid is not None
+        if not installed:
+            appid = get_steam_appid(game_name)
+        if not appid:
+            messagebox.showerror("Steam", tr("steam_not_found"))
+            return
+        dlg = tk.Toplevel(root)
+        apply_style(dlg)
+        dlg.title("Steam")
+        dlg.transient(root)
+        dlg.grab_set()
+        WindowUtils.center_window(dlg, 600, 130)
+        ttk.Label(
+            dlg,
+            text=tr("steam_action_prompt").format(name=game_name),
+            justify="center",
+            anchor="center",
+            wraplength=560,
+        ).pack(padx=20, pady=15)
+
+        def act() -> None:
+            url = (
+                f"steam://rungameid/{appid}"
+                if installed
+                else f"steam://install/{appid}"
+            )
+            webbrowser.open(url)
+            dlg.destroy()
+
+        btn = ttk.Button(
+            dlg,
+            text=tr("steam_play") if installed else tr("steam_install"),
+            command=act,
+            width=20,
+        )
+        btn.pack(pady=(0, 15))
+        add_button_hover(btn)
+    activity_lists = {}
+
+    def build_activity_caches() -> None:
+        """Cache weighted activity lists for quick toggle switches."""
+        discover_steam_libraries.cache_clear()
+        load_installed_games.cache_clear()
+        discover_steam_libraries()
+        load_installed_games()
+        def filter_no_games(item):
+            _, label, is_sub, _ = item
+            return not (is_sub and is_steam_game_label(label))
+
+        activity_lists["all"] = use_cases.build_weighted_items()
+        activity_lists["no_games"] = use_cases.build_weighted_items(filter_no_games)
+        def filter_games(item):
+            _, label, is_sub, _ = item
+            return is_sub and is_steam_game_label(label)
+
+        activity_lists["games"] = use_cases.build_weighted_items(filter_games)
+        if refresh_probabilities:
+            refresh_probabilities()
+
+    build_activity_caches()
+
+    def current_items_weights():
+        if not include_games_var.get():
+            return activity_lists["no_games"]
+        if games_only_var.get():
+            return activity_lists["games"]
+        return activity_lists["all"]
 
     canvas = None  # se asigna más tarde
     separator = None  # línea divisoria asignada después
@@ -259,6 +444,10 @@ def start_app() -> None:
         if final_canvas is not None:
             final_canvas.configure(bg=get_color("surface"))
             final_canvas.itemconfigure("final_text", fill=get_color("text"))
+        if include_games_switch is not None:
+            include_games_switch.redraw()
+        if games_only_switch is not None:
+            games_only_switch.redraw()
         if refresh_probabilities:
             refresh_probabilities()
         save_settings()
@@ -301,6 +490,10 @@ def start_app() -> None:
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
         rebuild_menus()
+        if include_games_label is not None:
+            include_games_label.config(text=tr("include_games"))
+        if games_only_label is not None:
+            games_only_label.config(text=tr("games_only"))
         if final_canvas is not None and overlay_buttons:
             final_canvas.itemconfigure(
                 "final_text", text=tr("what_about").format(current_activity["name"])
@@ -358,11 +551,56 @@ def start_app() -> None:
         prob_table.tag_configure(
             "odd", background=get_color("light"), foreground=get_color("text")
         )
-        for i, (name, prob) in enumerate(use_cases.get_activity_probabilities()):
+        items, weights = current_items_weights()
+        if not items:
+            return
+        total_weight = sum(weights)
+        for i, ((_, name, _), weight) in enumerate(zip(items, weights)):
             tag = "even" if i % 2 == 0 else "odd"
+            prob = weight / total_weight
             prob_table.insert("", "end", values=(name, f"{prob*100:.1f}%"), tags=(tag,))
 
     refresh_probabilities()
+
+    def on_toggle_update():
+        nonlocal games_only_switch
+        if games_only_var.get():
+            include_games_var.set(True)
+        if not include_games_var.get():
+            games_only_var.set(False)
+            if games_only_switch is not None:
+                games_only_switch.state(["disabled"])
+        else:
+            if games_only_switch is not None:
+                games_only_switch.state(["!disabled"])
+        refresh_probabilities()
+
+    toggle_container = ttk.Frame(content_frame, style="Surface.TFrame")
+    toggle_container.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
+
+    include_row = ttk.Frame(toggle_container, style="Surface.TFrame")
+    include_row.pack(anchor="e", pady=2)
+    include_games_label = ttk.Label(
+        include_row, text=tr("include_games"), style="Surface.TLabel"
+    )
+    include_games_label.pack(side="left", padx=(0, 5))
+    include_games_switch = ToggleSwitch(
+        include_row, variable=include_games_var, command=on_toggle_update
+    )
+    include_games_switch.pack(side="left")
+
+    only_row = ttk.Frame(toggle_container, style="Surface.TFrame")
+    only_row.pack(anchor="e", pady=2)
+    games_only_label = ttk.Label(
+        only_row, text=tr("games_only"), style="Surface.TLabel"
+    )
+    games_only_label.pack(side="left", padx=(0, 5))
+    games_only_switch = ToggleSwitch(
+        only_row, variable=games_only_var, command=on_toggle_update
+    )
+    games_only_switch.pack(side="left")
+
+    on_toggle_update()
 
     suggestion_label = ttk.Label(
         content_frame,
@@ -499,7 +737,8 @@ def start_app() -> None:
             if table_frame is not None:
                 table_frame.grid()
             button_container.pack(side="bottom", fill="x", pady=20)
-        result = use_cases.get_weighted_random_valid_activity()
+        items, weights = current_items_weights()
+        result = random.choices(items, weights=weights, k=1)[0] if items else None
         if not result:
             suggestion_label.config(
                 text=tr("no_hobbies")
@@ -514,8 +753,8 @@ def start_app() -> None:
 
         options = []
         for _ in range(20):
-            alt = use_cases.get_weighted_random_valid_activity()
-            if alt:
+            if items:
+                alt = random.choices(items, weights=weights, k=1)[0]
                 options.append(alt[1])
         options += [final_text, ""]
 
@@ -583,9 +822,22 @@ def start_app() -> None:
     def accept():
         nonlocal final_canvas, final_timeout_id
         if current_activity["id"]:
+            is_game = (
+                current_activity["is_subitem"]
+                and current_activity["name"]
+                and is_steam_game_label(current_activity["name"])
+            )
+            game_name = (
+                current_activity["name"].split(" + ", 1)[1]
+                if is_game
+                else ""
+            )
             use_cases.mark_activity_as_done(
                 current_activity["id"], current_activity["is_subitem"]
             )
+            build_activity_caches()
+            if is_game:
+                show_game_popup(game_name)
             current_activity["id"] = None
             current_activity["name"] = None
             current_activity["is_subitem"] = False
@@ -725,6 +977,7 @@ def start_app() -> None:
         ):
             use_cases.delete_hobby(hobby_id)
             refresh_listbox()
+            build_activity_caches()
             messagebox.showinfo(tr("deleted"), tr("hobby_deleted").format(name=hobby_name))
 
     def open_edit_hobby_window(hobby_id, hobby_name):
@@ -760,6 +1013,7 @@ def start_app() -> None:
                     if new_name and new_name.strip() != current_name:
                         use_cases.update_subitem(subitem_id, new_name.strip())
                         refresh_items()
+                        build_activity_caches()
 
                 ttk.Button(
                     row,
@@ -777,6 +1031,7 @@ def start_app() -> None:
             ):
                 use_cases.delete_subitem(item_id)
                 refresh_items()
+                build_activity_caches()
 
         def add_subitem():
             new_item = SimpleEntryDialog.ask(
@@ -787,6 +1042,7 @@ def start_app() -> None:
             if new_item:
                 use_cases.add_subitem_to_hobby(hobby_id, new_item.strip())
                 refresh_items()
+                build_activity_caches()
 
         ttk.Button(
             edit_window, text=tr("add_subitem_btn"), command=add_subitem
@@ -810,6 +1066,7 @@ def start_app() -> None:
                     title=tr("another_title"),
                     prompt=tr("another_prompt"),
                 )
+            build_activity_caches()
             add_window.destroy()
             refresh_listbox()
 
