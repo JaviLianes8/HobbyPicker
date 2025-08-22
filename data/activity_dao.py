@@ -106,7 +106,12 @@ class ActivityDAO:
 
     def get_all_with_counts(self):
         return self.conn.execute("SELECT id, name, accepted_count FROM activities").fetchall()
-    
+
     def update_subitem(self, subitem_id, new_name):
         self.conn.execute("UPDATE subitems SET name = ? WHERE id = ?", (new_name, subitem_id))
+        self.conn.commit()
+
+    def reset_counts(self):
+        self.conn.execute("UPDATE activities SET accepted_count = 0")
+        self.conn.execute("UPDATE subitems SET accepted_count = 0")
         self.conn.commit()
