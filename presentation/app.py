@@ -1043,15 +1043,60 @@ def start_app() -> None:
         hobby_entry.focus()
 
         ttk.Label(add_window, text=tr("subitems_label")).pack(pady=(10, 0))
-        subitems_frame = ttk.Frame(add_window)
-        subitems_frame.pack()
+        subitems_container = ttk.Frame(add_window)
+        subitems_container.pack(fill="both", expand=True)
+
+        subitems_canvas = tk.Canvas(
+            subitems_container, bg=get_color("surface"), highlightthickness=0
+        )
+        subitems_scroll = ttk.Scrollbar(
+            subitems_container, orient="vertical", command=subitems_canvas.yview
+        )
+        subitems_canvas.configure(yscrollcommand=subitems_scroll.set)
+        subitems_canvas.pack(side="left", fill="both", expand=True)
+        subitems_scroll.pack(side="right", fill="y")
+        subitems_frame = ttk.Frame(subitems_canvas, style="Surface.TFrame")
+        subitems_canvas.create_window(
+            (0, 0), window=subitems_frame, anchor="nw", tags="inner_frame"
+        )
+
+        def update_subitems_scroll(e=None):
+            subitems_canvas.configure(scrollregion=subitems_canvas.bbox("all"))
+            subitems_canvas.itemconfig(
+                "inner_frame", width=subitems_canvas.winfo_width()
+            )
+
+        subitems_frame.bind("<Configure>", update_subitems_scroll)
+        subitems_canvas.bind("<Configure>", update_subitems_scroll)
 
         subitem_entries: list[ttk.Entry] = []
 
+        def resize_add_window() -> None:
+            add_window.update_idletasks()
+            max_height = add_window.winfo_screenheight() - 200
+            canvas_height = min(subitems_frame.winfo_reqheight(), max_height)
+            subitems_canvas.configure(height=canvas_height)
+            add_window.geometry("")
+            WindowUtils.center_window(
+                add_window, add_window.winfo_width(), add_window.winfo_height()
+            )
+
         def add_subitem_field() -> None:
-            entry = ttk.Entry(subitems_frame, width=40)
-            entry.pack(pady=2)
+            container = ttk.Frame(subitems_frame)
+            entry = ttk.Entry(container, width=40)
+            entry.pack(side="left", pady=2)
+
+            def remove_entry() -> None:
+                container.destroy()
+                subitem_entries.remove(entry)
+                resize_add_window()
+
+            ttk.Button(container, text="🗑", width=3, command=remove_entry).pack(
+                side="left", padx=5
+            )
+            container.pack(fill="x", pady=2)
             subitem_entries.append(entry)
+            resize_add_window()
 
         add_subitem_field()
 
