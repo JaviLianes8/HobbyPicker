@@ -69,33 +69,27 @@ def start_app() -> None:
         if epic_token:
             return epic_token
         try:
-            resp = requests.post(
-                "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/deviceAuthorization",
-                auth=("34a02cf8f4414e29b15921876da36f9a", "daafbccc737745039dffe53d94fc76cf"),
-                data={"prompt": "login"},
+            webbrowser.open("https://legendary.gl/epiclogin")
+            code = SimpleEntryDialog.ask(
+                root, tr("epic_login_title"), tr("epic_token_prompt")
+            )
+            if not code:
+                return None
+            tok = requests.post(
+                "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token",
+                auth=(
+                    "34a02cf8f4414e29b15921876da36f9a",
+                    "daafbccc737745039dffe53d94fc76cf",
+                ),
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "token_type": "eg1",
+                },
                 timeout=5,
             )
-            data = resp.json()
-            device_code = data.get("device_code")
-            user_code = data.get("user_code")
-            verify_uri = data.get("verification_uri_complete")
-            if not (device_code and user_code and verify_uri):
-                return None
-            webbrowser.open(verify_uri)
-            messagebox.showinfo("Epic Games", tr("epic_token_prompt").format(code=user_code))
-            for _ in range(120):
-                time.sleep(1)
-                tok = requests.post(
-                    "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token",
-                    auth=("34a02cf8f4414e29b15921876da36f9a", "daafbccc737745039dffe53d94fc76cf"),
-                    data={"grant_type": "device_code", "device_code": device_code},
-                    timeout=5,
-                )
-                if tok.status_code == 200:
-                    epic_token = tok.json().get("access_token")
-                    break
-                if tok.status_code not in (400, 403):
-                    break
+            if tok.status_code == 200:
+                epic_token = tok.json().get("access_token")
             return epic_token
         except Exception:
             return None
