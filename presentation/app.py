@@ -199,6 +199,18 @@ def start_app() -> None:
         except Exception:
             messagebox.showerror(tr("error"), tr("epic_import_error"))
 
+    def reset_counts() -> None:
+        if not messagebox.askyesno(
+            tr("btn_reset_counts"), tr("reset_counts_confirm")
+        ):
+            return
+        use_cases.reset_counts()
+        build_activity_caches()
+        refresh_listbox()
+        messagebox.showinfo(
+            tr("btn_reset_counts"), tr("reset_counts_success")
+        )
+
     @lru_cache(maxsize=None)
     def get_steam_appid(game_name: str) -> int | None:
         try:
@@ -353,7 +365,7 @@ def start_app() -> None:
                     params["cursor"] = cursor
                 resp = requests.get(
                     "https://library-service.live.use1a.on.epicgames.com/library/api/public/items",
-                    headers={"Authorization": f"bearer {token}"},
+                    headers={"Authorization": f"Bearer {token}"},
                     params=params,
                     timeout=5,
                 )
@@ -567,6 +579,9 @@ def start_app() -> None:
                 command=lambda c=code: change_language(c),
             )
         menubar.add_cascade(label=tr("menu_language"), menu=language_menu)
+        menubar.add_command(label="|", state="disabled")
+
+        menubar.add_command(label=tr("btn_reset_counts"), command=reset_counts)
         menubar.add_command(label="|", state="disabled")
 
         menubar.add_command(label=tr("btn_steam"), command=import_steam_games)

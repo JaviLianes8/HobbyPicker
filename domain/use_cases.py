@@ -87,6 +87,10 @@ def update_subitem(subitem_id, new_name):
     dao.update_subitem(subitem_id, new_name)
 
 
+def reset_counts():
+    dao.reset_counts()
+
+
 def get_activity_probabilities(
     filter_func: Callable[[Tuple[int, str, bool, int]], bool] | None = None,
 ):
