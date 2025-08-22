@@ -102,7 +102,7 @@ def start_app() -> None:
             "delete_subitem_confirm": "¿Eliminar subelemento '{name}'?",
             "new_subitem_title": "Nuevo subelemento",
             "new_subitem_prompt": "Introduce nuevo:",
-            "add_subitem_btn": "Añadir subelemento",
+            "add_subitem_btn": "➕ Añadir subelemento",
             "subitem_title": "Subelemento",
             "subitem_prompt": "Introduce un elemento relacionado:",
             "another_title": "¿Otro más?",
@@ -155,7 +155,7 @@ def start_app() -> None:
             "delete_subitem_confirm": "Delete subitem '{name}'?",
             "new_subitem_title": "New subitem",
             "new_subitem_prompt": "Enter new:",
-            "add_subitem_btn": "Add subitem",
+            "add_subitem_btn": "➕ Add subitem",
             "subitem_title": "Subitem",
             "subitem_prompt": "Enter a related item:",
             "another_title": "Another one?",
@@ -496,7 +496,9 @@ def start_app() -> None:
         add_hobby_btn.config(text=tr("add_hobby"))
         prob_table.heading("activity", text=tr("col_activity"))
         prob_table.heading("percent", text=tr("col_percent"))
-        prob_table.heading("delete", text=tr("delete"))
+        prob_table.heading("info", text="ⓘ")
+        prob_table.heading("steam", text="🎮")
+        prob_table.heading("delete", text="🗑")
         rebuild_menus()
         if include_games_label is not None:
             include_games_label.config(
@@ -531,7 +533,7 @@ def start_app() -> None:
     separator = ttk.Separator(frame_suggest, orient="vertical")
     separator.grid(row=0, column=1, sticky="ns", padx=5)
 
-    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=660)
+    table_frame = ttk.Frame(frame_suggest, style="Surface.TFrame", width=740)
     table_frame.grid(row=0, column=2, sticky="nsew", padx=10)
     table_frame.grid_propagate(False)
     table_frame.rowconfigure(0, weight=1)
@@ -539,16 +541,20 @@ def start_app() -> None:
 
     prob_table = ttk.Treeview(
         table_frame,
-        columns=("activity", "percent", "delete"),
+        columns=("activity", "percent", "info", "steam", "delete"),
         show="headings",
         style="Probability.Treeview",
     )
     prob_table.heading("activity", text=tr("col_activity"), anchor="w")
     prob_table.heading("percent", text=tr("col_percent"), anchor="center")
-    prob_table.heading("delete", text=tr("delete"), anchor="center")
+    prob_table.heading("info", text="ⓘ", anchor="center")
+    prob_table.heading("steam", text="🎮", anchor="center")
+    prob_table.heading("delete", text="🗑", anchor="center")
     prob_table.column("activity", width=480, anchor="w")
-    prob_table.column("percent", width=180, anchor="center")
-    prob_table.column("delete", width=60, anchor="center")
+    prob_table.column("percent", width=120, anchor="center")
+    prob_table.column("info", width=40, anchor="center")
+    prob_table.column("steam", width=40, anchor="center")
+    prob_table.column("delete", width=40, anchor="center")
 
     v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=prob_table.yview)
     prob_table.configure(yscrollcommand=v_scroll.set)
@@ -573,11 +579,12 @@ def start_app() -> None:
             tag = "even" if i % 2 == 0 else "odd"
             prob = weight / total_weight
             iid = f"{'s' if is_sub else 'h'}{item_id}"
+            steam_icon = "🎮" if is_sub and is_steam_game_label(name) else ""
             prob_table.insert(
                 "",
                 "end",
                 iid=iid,
-                values=(name, f"{prob*100:.1f}%", "🗑"),
+                values=(name, f"{prob*100:.1f}%", "ⓘ", steam_icon, "🗑"),
                 tags=(tag,),
             )
 
@@ -959,12 +966,12 @@ def start_app() -> None:
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    sticky_bottom = ttk.Frame(main_config_layout, style="Surface.TFrame")
-    sticky_bottom.pack(fill="x", side="bottom", pady=5)
     add_hobby_btn = ttk.Button(
-        sticky_bottom, text=tr("add_hobby"), command=lambda: open_add_hobby_window()
+        main_config_layout,
+        text=tr("add_hobby"),
+        command=lambda: open_add_hobby_window(),
     )
-    add_hobby_btn.pack()
+    add_hobby_btn.place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
 
     update_texts()
 
@@ -1016,20 +1023,38 @@ def start_app() -> None:
         if region != "cell":
             return
         column = prob_table.identify_column(event.x)
-        if column != "#3":
-            return
         row_id = prob_table.identify_row(event.y)
         if not row_id:
             return
         name = prob_table.item(row_id, "values")[0]
-        if row_id.startswith("h"):
-            confirm_delete_hobby(int(row_id[1:]), name)
-        elif row_id.startswith("s"):
-            if messagebox.askyesno(
-                tr("delete"), tr("delete_subitem_confirm").format(name=name)
-            ):
-                use_cases.delete_subitem(int(row_id[1:]))
-                build_activity_caches()
+        if column == "#5":
+            if row_id.startswith("h"):
+                confirm_delete_hobby(int(row_id[1:]), name)
+            elif row_id.startswith("s"):
+                if messagebox.askyesno(
+                    tr("delete"), tr("delete_subitem_confirm").format(name=name)
+                ):
+                    use_cases.delete_subitem(int(row_id[1:]))
+                    build_activity_caches()
+                    refresh_probabilities()
+        elif column == "#3":
+            if row_id.startswith("h"):
+                open_edit_hobby_window(int(row_id[1:]), name)
+            elif row_id.startswith("s"):
+                new_name = SimpleEntryDialog.ask(
+                    parent=root,
+                    title=tr("edit_subitem_title"),
+                    prompt=tr("new_name_prompt").format(name=name),
+                    initial_value=name,
+                )
+                if new_name:
+                    use_cases.update_subitem(int(row_id[1:]), new_name.strip())
+                    build_activity_caches()
+                    refresh_probabilities()
+        elif column == "#4":
+            if row_id.startswith("s") and is_steam_game_label(name):
+                game_name = name.split(" + ", 1)[1]
+                show_game_popup(game_name)
 
     prob_table.bind("<Button-1>", on_prob_table_click)
 
@@ -1113,9 +1138,10 @@ def start_app() -> None:
                 refresh_items()
                 build_activity_caches()
 
-        ttk.Button(
+        btn_add_sub = ttk.Button(
             edit_window, text=tr("add_subitem_btn"), command=add_subitem
-        ).pack(pady=10)
+        )
+        btn_add_sub.place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
         refresh_items()
 
     def open_add_hobby_window():
