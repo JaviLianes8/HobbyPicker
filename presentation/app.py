@@ -110,11 +110,15 @@ def start_app() -> None:
             url = f"https://steamcommunity.com/profiles/{steam_id}/games?tab=all&xml=1"
             data = requests.get(url, timeout=10).content
             root_xml = ET.fromstring(data)
-            games = [
-                g.findtext("name")
-                for g in root_xml.findall("./games/game")
-                if g.findtext("name")
-            ]
+            games = []
+            for g in root_xml.findall("./games/game"):
+                name = g.findtext("name")
+                appid = g.findtext("appID")
+                if not name or not appid:
+                    continue
+                if get_steam_app_type(int(appid)) == "dlc":
+                    continue
+                games.append(name)
             games = list(dict.fromkeys(games))  # eliminate duplicates while preserving order
             if not games:
                 raise ValueError
@@ -143,6 +147,15 @@ def start_app() -> None:
                     try:
                         data = json.loads(manifest.read_text(encoding="utf-8", errors="ignore"))
                         name = data.get("DisplayName")
+                        if name:
+                            games.append(name)
+                    except Exception:
+                        pass
+            for path in discover_epic_catalogs():
+                for cache in path.glob("*.json"):
+                    try:
+                        data = json.loads(cache.read_text(encoding="utf-8", errors="ignore"))
+                        name = data.get("displayName") or data.get("DisplayName") or data.get("title")
                         if name:
                             games.append(name)
                     except Exception:
@@ -179,6 +192,21 @@ def start_app() -> None:
             return int(data[0]["appid"]) if data else None
         except Exception:
             return None
+
+    @lru_cache(maxsize=None)
+    def get_steam_app_type(appid: int) -> str | None:
+        try:
+            resp = requests.get(
+                f"https://store.steampowered.com/api/appdetails?appids={appid}&filters=basic",
+                timeout=5,
+            )
+            data = resp.json()
+            info = data.get(str(appid), {})
+            if info.get("success"):
+                return info.get("data", {}).get("type")
+        except Exception:
+            pass
+        return None
 
     @lru_cache(maxsize=1)
     def discover_steam_libraries() -> list[Path]:
@@ -275,6 +303,26 @@ def start_app() -> None:
         return paths
 
     @lru_cache(maxsize=1)
+    def discover_epic_catalogs() -> list[Path]:
+        paths: list[Path] = []
+        candidate_roots: list[Path] = []
+        if os.name == "nt":
+            pd = os.environ.get("PROGRAMDATA")
+            if pd:
+                candidate_roots.append(Path(pd) / "Epic/EpicGamesLauncher/Data/CatalogCache")
+        else:
+            candidate_roots.extend(
+                [
+                    Path.home() / ".local/share/EpicGamesLauncher/Data/CatalogCache",
+                    Path.home() / "Library/Application Support/Epic/EpicGamesLauncher/Data/CatalogCache",
+                ]
+            )
+        for root in candidate_roots:
+            if root.exists():
+                paths.append(root)
+        return paths
+
+    @lru_cache(maxsize=1)
     def load_epic_installed_games() -> dict[str, str]:
         games: dict[str, str] = {}
         for path in discover_epic_manifests():
@@ -294,11 +342,7 @@ def start_app() -> None:
 
     def show_epic_game_popup(game_name: str) -> None:
         load_epic_installed_games.cache_clear()
-        appname = get_epic_appname(game_name)
-        installed = appname is not None
-        if not appname:
-            messagebox.showerror("Epic Games", tr("epic_not_found"))
-            return
+        installed = get_epic_appname(game_name) is not None
         dlg = tk.Toplevel(root)
         apply_style(dlg)
         dlg.title("Epic Games")
