@@ -20,6 +20,14 @@ class ToggleSwitch(ttk.Frame):
         self.variable.trace_add("write", lambda *_: self.redraw())
         self.redraw()
 
+    def configure(self, cnf=None, **kw):  # support "command" like regular widgets
+        if "command" in kw:
+            self.command = kw.pop("command")
+        if cnf or kw:
+            super().configure(cnf, **kw)
+
+    config = configure
+
     def _toggle(self, _event=None):
         if self._disabled:
             return
