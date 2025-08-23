@@ -4,6 +4,7 @@ import random
 import threading
 import webbrowser
 import re
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlencode, urlparse, parse_qs, quote
 from pathlib import Path
@@ -67,11 +68,31 @@ def start_app() -> None:
         nonlocal epic_token
         if epic_token:
             return epic_token
-        dlg = SimpleEntryDialog(root, tr("epic_login_title"), tr("epic_token_prompt"))
-        token = dlg.result
-        if token:
-            epic_token = token
-        return epic_token
+        try:
+            webbrowser.open("https://legendary.gl/epiclogin")
+            code = SimpleEntryDialog.ask(
+                root, tr("epic_login_title"), tr("epic_token_prompt")
+            )
+            if not code:
+                return None
+            tok = requests.post(
+                "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token",
+                auth=(
+                    "34a02cf8f4414e29b15921876da36f9a",
+                    "daafbccc737745039dffe53d94fc76cf",
+                ),
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "token_type": "eg1",
+                },
+                timeout=5,
+            )
+            if tok.status_code == 200:
+                epic_token = tok.json().get("access_token")
+            return epic_token
+        except Exception:
+            return None
 
     def login_steam_id() -> str | None:
         result = {"id": None}
